@@ -25,6 +25,7 @@ app.use(express.static('public'));
 // Configuration Firebase
 let bucket = null;
 let db = null;
+let firebaseInitialized = false;
 
 // Vérifier que les variables d'environnement sont présentes
 const requiredEnvVars = [
@@ -41,41 +42,45 @@ const missingVars = requiredEnvVars.filter(v => !process.env[v]);
 
 if (missingVars.length === 0) {
   try {
-    // Construire l'objet Firebase avec les variables d'environnement
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
-    
-    const serviceAccount = {
-      type: 'service_account',
-      project_id: process.env.FIREBASE_PROJECT_ID,
-      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-      private_key: privateKey,
-      client_email: process.env.FIREBASE_CLIENT_EMAIL,
-      client_id: process.env.FIREBASE_CLIENT_ID,
-      auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-      token_uri: 'https://oauth2.googleapis.com/token',
-      auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
-      client_x509_cert_url: process.env.FIREBASE_CERT_URL
-    };
+    // Vérifier que Firebase n'est pas déjà initialisé
+    if (!firebaseInitialized) {
+      // Construire l'objet Firebase avec les variables d'environnement
+      const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+      
+      const serviceAccount = {
+        type: 'service_account',
+        project_id: process.env.FIREBASE_PROJECT_ID,
+        private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+        private_key: privateKey,
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        client_id: process.env.FIREBASE_CLIENT_ID,
+        auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+        token_uri: 'https://oauth2.googleapis.com/token',
+        auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+        client_x509_cert_url: process.env.FIREBASE_CERT_URL
+      };
 
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      storageBucket: process.env.FIREBASE_BUCKET,
-      databaseURL: process.env.FIREBASE_DATABASE_URL || undefined
-    });
-    
-    bucket = admin.storage().bucket();
-    
-    // Initialiser la DB seulement si l'URL est disponible
-    try {
-      db = admin.database();
-    } catch (e) {
-      console.log('⚠️ Realtime Database non configurée (optionnel)');
-      db = null;
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        storageBucket: process.env.FIREBASE_BUCKET,
+        databaseURL: process.env.FIREBASE_DATABASE_URL || undefined
+      });
+      
+      firebaseInitialized = true;
+      bucket = admin.storage().bucket();
+      
+      // Initialiser la DB seulement si l'URL est disponible
+      try {
+        db = admin.database();
+      } catch (e) {
+        console.log('⚠️ Realtime Database non configurée (optionnel)');
+        db = null;
+      }
+      
+      console.log('✅ Firebase Storage connecté avec succès');
+      console.log(`💾 Storage: ${bucket ? 'Connecté' : 'Non connecté'}`);
+      console.log(`📊 Database: ${db ? 'Connectée' : 'Non configurée (optionnel)'}`);
     }
-    
-    console.log('✅ Firebase Storage connecté avec succès');
-    console.log(`💾 Storage: ${bucket ? 'Connecté' : 'Non connecté'}`);
-    console.log(`📊 Database: ${db ? 'Connectée' : 'Non configurée (optionnel)'}`);
   } catch (error) {
     console.log('❌ Erreur de connexion Firebase:', error.message);
     console.log('Vérifiez votre fichier .env et vos clés Firebase');
@@ -86,9 +91,9 @@ if (missingVars.length === 0) {
   missingVars.forEach(v => console.log(`  - ${v}`));
 }
 
-// Upload temporaire local (fallback)
+// Upload en mémoire pour Vercel (pas de système de fichiers)
 const upload = multer({ 
-  dest: 'uploads/',
+  storage: multer.memoryStorage(),
   limits: { fileSize: 100 * 1024 * 1024 } // 100MB max
 });
 
@@ -158,15 +163,10 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         
         const file = bucket.file(destination);
         
-        // Créer le dossier s'il n'existe pas
-        const uploadsDir = 'uploads';
-        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-        const typeDir = path.join(uploadsDir, fileType);
-        if (!fs.existsSync(typeDir)) fs.mkdirSync(typeDir);
-        
-        // Upload le fichier
+        // Upload le fichier (multer.memoryStorage() utilise req.file.buffer)
         console.log(`📤 Upload du fichier vers Firebase...`);
-        await file.save(fs.readFileSync(req.file.path), {
+        const fileBuffer = req.file.buffer;
+        await file.save(fileBuffer, {
           metadata: {
             contentType: req.file.mimetype,
             metadata: metadata
@@ -534,10 +534,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Créer dossiers nécessaires
-if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
-if (!fs.existsSync('metadata')) fs.mkdirSync('metadata');
-if (!fs.existsSync('public')) fs.mkdirSync('public');
+// Créer dossiers nécessaires (seulement en local, pas sur Vercel)
+const isVercel = process.env.VERCEL === '1';
+if (!isVercel) {
+  try {
+    if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
+    if (!fs.existsSync('metadata')) fs.mkdirSync('metadata');
+    if (!fs.existsSync('public')) fs.mkdirSync('public');
+  } catch (e) {
+    console.log('⚠️ Erreur création dossiers (normal sur Vercel):', e.message);
+  }
+}
 
 // Démarrer serveur
 app.listen(PORT, () => {
