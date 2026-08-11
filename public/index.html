@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Notre Mariage - Album de Moments</title>
+    <title>Mariage Inès & Valentin - Album de Moments</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* ===== DESIGN SYSTEM MODERNE ===== */
@@ -738,48 +738,156 @@
             border-color: transparent;
         }
 
-        /* ===== BOTTOM MENU ===== */
-        .bottom-menu {
+        /* ===== SIDE MENU ===== */
+        .side-menu {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 80px;
+            left: -280px;
+            top: 0;
+            width: 280px;
+            height: 100vh;
             background: var(--white);
-            border-top: 1px solid var(--primary-light);
+            border-right: 1px solid var(--primary-light);
             display: flex;
-            justify-content: space-around;
+            flex-direction: column;
+            padding-top: max(16px, env(safe-area-inset-top));
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+            z-index: 150;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
+        }
+
+        .side-menu.open {
+            left: 0;
+        }
+
+        .menu-header {
+            display: flex;
             align-items: center;
-            padding-bottom: max(0px, env(safe-area-inset-bottom));
-            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
-            z-index: 100;
+            justify-content: space-between;
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--primary-light);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .menu-header h2 {
+            font-family: var(--font-display);
+            font-size: 1.3em;
+            color: var(--primary);
+            margin: 0;
+        }
+
+        .close-menu-btn {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: var(--primary);
+            transition: var(--transition);
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-menu-btn:hover {
+            transform: rotate(90deg);
+        }
+
+        .menu-items {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            flex: 1;
         }
 
         .menu-item {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             align-items: center;
-            gap: var(--spacing-xs);
+            gap: var(--spacing-lg);
             cursor: pointer;
-            padding: var(--spacing-md);
-            border-radius: 12px;
+            padding: var(--spacing-lg);
+            border-radius: 0;
             transition: var(--transition);
             color: var(--gray);
-            font-size: 0.8em;
-            text-align: center;
+            font-size: 1em;
+            text-align: left;
+            border-left: 4px solid transparent;
         }
 
         .menu-item:hover {
             color: var(--primary);
             background: var(--primary-light);
+            border-left-color: var(--primary);
         }
 
         .menu-item.active {
-            color: var(--primary);
+            color: var(--white);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            border-left-color: var(--white);
         }
 
         .menu-icon {
-            font-size: 1.6em;
+            font-size: 1.5em;
+            min-width: 24px;
+        }
+
+        /* ===== HAMBURGER BUTTON ===== */
+        .hamburger-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            z-index: 140;
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+            color: var(--white);
+            font-size: 1.2em;
+        }
+
+        .hamburger-btn:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .hamburger-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* ===== OVERLAY FOR MENU ===== */
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0);
+            display: none;
+            z-index: 130;
+            transition: background 0.3s ease;
+        }
+
+        .menu-overlay.open {
+            display: block;
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        /* ===== ADJUST CONTENT PADDING ===== */
+        .content {
+            padding-top: 70px;
         }
 
         /* ===== TOASTS ===== */
@@ -824,7 +932,7 @@
     <div class="app-container">
         <!-- HEADER -->
         <div class="status-bar">
-            <h1>💍 Notre Mariage</h1>
+            <h1>💍 Mariage Inès & Valentin</h1>
         </div>
 
         <!-- CONTENT -->
@@ -952,23 +1060,39 @@
         <!-- TOAST -->
         <div class="toast" id="statusToast"></div>
 
-        <!-- BOTTOM MENU -->
-        <div class="bottom-menu">
-            <div class="menu-item active" data-screen="capture">
-                <div class="menu-icon"><i class="fas fa-camera"></i></div>
-                <div>Capture</div>
+        <!-- HAMBURGER BUTTON -->
+        <button class="hamburger-btn" id="hamburgerBtn" title="Menu">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- MENU OVERLAY -->
+        <div class="menu-overlay" id="menuOverlay"></div>
+
+        <!-- SIDE MENU -->
+        <div class="side-menu" id="sideMenu">
+            <div class="menu-header">
+                <h2>💍 Menu</h2>
+                <button class="close-menu-btn" id="closeMenuBtn" title="Fermer">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="menu-item" data-screen="audio">
-                <div class="menu-icon"><i class="fas fa-microphone"></i></div>
-                <div>Message</div>
-            </div>
-            <div class="menu-item" data-screen="gallery">
-                <div class="menu-icon"><i class="fas fa-images"></i></div>
-                <div>Galerie</div>
-            </div>
-            <div class="menu-item" data-screen="messages">
-                <div class="menu-icon"><i class="fas fa-envelope"></i></div>
-                <div>Messages</div>
+            <div class="menu-items">
+                <div class="menu-item active" data-screen="capture">
+                    <div class="menu-icon"><i class="fas fa-camera"></i></div>
+                    <div>Capture</div>
+                </div>
+                <div class="menu-item" data-screen="audio">
+                    <div class="menu-icon"><i class="fas fa-microphone"></i></div>
+                    <div>Message</div>
+                </div>
+                <div class="menu-item" data-screen="gallery">
+                    <div class="menu-icon"><i class="fas fa-images"></i></div>
+                    <div>Galerie</div>
+                </div>
+                <div class="menu-item" data-screen="messages">
+                    <div class="menu-icon"><i class="fas fa-envelope"></i></div>
+                    <div>Messages</div>
+                </div>
             </div>
         </div>
     </div>
@@ -1552,7 +1676,32 @@
         }
 
         function setupEventListeners() {
-            // Les événements sont configurés ci-dessus
+            // Menu hamburger
+            const hamburgerBtn = document.getElementById('hamburgerBtn');
+            const sideMenu = document.getElementById('sideMenu');
+            const menuOverlay = document.getElementById('menuOverlay');
+            const closeMenuBtn = document.getElementById('closeMenuBtn');
+
+            function openMenu() {
+                sideMenu.classList.add('open');
+                menuOverlay.classList.add('open');
+            }
+
+            function closeMenu() {
+                sideMenu.classList.remove('open');
+                menuOverlay.classList.remove('open');
+            }
+
+            hamburgerBtn.addEventListener('click', openMenu);
+            closeMenuBtn.addEventListener('click', closeMenu);
+            menuOverlay.addEventListener('click', closeMenu);
+
+            // Fermer le menu quand on clique sur un élément
+            document.querySelectorAll('.side-menu .menu-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    setTimeout(closeMenu, 300);
+                });
+            });
         }
 
         window.addEventListener('beforeunload', () => {
