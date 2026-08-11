@@ -88,11 +88,14 @@
         /* ===== CONTENT AREA ===== */
         .content {
             flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding-bottom: 90px;
+            overflow: hidden;
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
+        }
+
+        .content.scrollable {
+            overflow-y: auto;
+            padding-bottom: 90px;
         }
 
         .content::-webkit-scrollbar {
