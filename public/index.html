@@ -64,7 +64,7 @@
 
         /* ===== HEADER ===== */
         .status-bar {
-            height: 56px;
+            height: 48px;
             background: var(--white);
             border-bottom: 1px solid rgba(212, 175, 55, 0.1);
             display: flex;
@@ -72,11 +72,12 @@
             justify-content: center;
             padding-top: max(0px, env(safe-area-inset-top));
             box-shadow: var(--shadow-sm);
+            z-index: 50;
         }
 
         .status-bar h1 {
             font-family: var(--font-display);
-            font-size: 1.5em;
+            font-size: 1.2em;
             font-weight: 600;
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             -webkit-background-clip: text;
@@ -131,13 +132,13 @@
 
         .capture-controls {
             background: var(--white);
-            border-top: 1px solid var(--primary-light);
+            border-bottom: 1px solid var(--primary-light);
             display: flex;
             gap: var(--spacing-lg);
             padding: var(--spacing-md);
             justify-content: center;
             box-shadow: var(--shadow-sm);
-            order: 3;
+            order: 1;
             position: relative;
             z-index: 10;
         }
