@@ -228,6 +228,19 @@
             backdrop-filter: blur(10px);
         }
 
+        .camera-btn.video-btn {
+            width: 72px;
+            height: 72px;
+            background: #FF0000;
+            border-color: var(--white);
+            font-size: 1.8em;
+        }
+
+        .camera-btn.video-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 20px 40px rgba(255, 0, 0, 0.4);
+        }
+
         .video-timer {
             position: absolute;
             top: var(--spacing-lg);
@@ -949,14 +962,6 @@
         <div class="content">
             <!-- CAPTURE SCREEN -->
             <div class="screen screen-capture active">
-                <div class="capture-controls">
-                    <button class="mode-btn active" id="photoModeBtn" onclick="switchMode('photo')">
-                        <i class="fas fa-camera"></i> Photo
-                    </button>
-                    <button class="mode-btn" id="videoModeBtn" onclick="switchMode('video')">
-                        <i class="fas fa-video"></i> Vidéo
-                    </button>
-                </div>
                 <div class="camera-section">
                     <video id="video" autoplay playsinline muted></video>
                     <div id="videoTimer" class="video-timer" style="display: none;">00:00</div>
@@ -967,8 +972,8 @@
                         <button class="camera-btn" id="captureBtn" type="button" onclick="capturePhoto()" title="Prendre une photo">
                             <i class="fas fa-circle"></i>
                         </button>
-                        <button class="camera-btn" id="recordVideoBtn" type="button" style="display: none;" onclick="toggleVideoRecording()" title="Enregistrer une vidéo">
-                            <i class="fas fa-circle" style="color: #fff;"></i>
+                        <button class="camera-btn video-btn" id="recordVideoBtn" type="button" onclick="toggleVideoRecording()" title="Enregistrer une vidéo">
+                            <i class="fas fa-circle"></i>
                         </button>
                     </div>
                 </div>
@@ -1578,26 +1583,6 @@
             setTimeout(() => dom.statusToast.classList.remove('show'), 3000);
         }
 
-        function switchMode(mode) {
-            state.captureMode = mode;
-            const photoBtn = document.getElementById('photoModeBtn');
-            const videoBtn = document.getElementById('videoModeBtn');
-            const captureBtn = document.getElementById('captureBtn');
-            const recordVideoBtn = document.getElementById('recordVideoBtn');
-
-            if (mode === 'photo') {
-                photoBtn.classList.add('active');
-                videoBtn.classList.remove('active');
-                captureBtn.style.display = 'flex';
-                recordVideoBtn.style.display = 'none';
-                document.getElementById('videoTimer').style.display = 'none';
-            } else {
-                photoBtn.classList.remove('active');
-                videoBtn.classList.add('active');
-                captureBtn.style.display = 'none';
-                recordVideoBtn.style.display = 'flex';
-            }
-        }
 
         async function toggleVideoRecording() {
             if (state.videoRecorder && state.videoRecorder.state === 'recording') {
