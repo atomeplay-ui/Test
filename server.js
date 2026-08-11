@@ -177,17 +177,25 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         // Sauvegarder métadonnées LOCALEMENT sur le disque (fiable et rapide)
         console.log(`📊 Sauvegarde métadonnées locales...`);
         
-        // Créer les dossiers s'ils n'existent pas
-        const metadataDir = 'metadata';
-        if (!fs.existsSync(metadataDir)) fs.mkdirSync(metadataDir);
-        
-        const metadataTypeDir = path.join(metadataDir, fileType);
-        if (!fs.existsSync(metadataTypeDir)) fs.mkdirSync(metadataTypeDir);
-        
-        // Sauvegarder le fichier JSON avec les métadonnées
-        const metadataPath = path.join(metadataTypeDir, `${fileId}.json`);
-        fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-        console.log(`✅ Métadonnées sauvegardées localement: ${metadataPath}`);
+        // Créer les dossiers s'ils n'existent pas (SEULEMENT EN LOCAL, PAS VERCEL)
+        if (!isVercel) {
+          try {
+            const metadataDir = 'metadata';
+            if (!fs.existsSync(metadataDir)) fs.mkdirSync(metadataDir);
+            
+            const metadataTypeDir = path.join(metadataDir, fileType);
+            if (!fs.existsSync(metadataTypeDir)) fs.mkdirSync(metadataTypeDir);
+            
+            // Sauvegarder le fichier JSON avec les métadonnées
+            const metadataPath = path.join(metadataTypeDir, `${fileId}.json`);
+            fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+            console.log(`✅ Métadonnées sauvegardées localement: ${metadataPath}`);
+          } catch (metaErr) {
+            console.warn(`⚠️ Erreur sauvegarde métadonnées locales (normal sur Vercel):`, metaErr.message);
+          }
+        } else {
+          console.log(`⏭️ Métadonnées stockées dans Firebase (Vercel)`);
+        }
         
         // Essayer de sauvegarder AUSSI dans Firebase DB EN ARRIÈRE-PLAN (optionnel)
         if (db) {
