@@ -1,0 +1,11 @@
+node_modules
+.git
+.env.example
+*.md
+.gitignore
+.DS_Store
+demarrer.bat
+demarrer_python.bat
+server.py
+*.test.js
+.vercel
