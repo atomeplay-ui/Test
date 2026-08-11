@@ -141,6 +141,7 @@
             order: 1;
             position: relative;
             z-index: 10;
+            margin-top: 0;
         }
 
         .mode-btn {
@@ -846,7 +847,7 @@
         /* ===== HAMBURGER BUTTON ===== */
         .hamburger-btn {
             position: fixed;
-            top: 16px;
+            top: 2px;
             left: 16px;
             width: 44px;
             height: 44px;
@@ -864,6 +865,7 @@
             transition: var(--transition);
             color: var(--white);
             font-size: 1.2em;
+            padding-top: max(0px, env(safe-area-inset-top));
         }
 
         .hamburger-btn:hover {
