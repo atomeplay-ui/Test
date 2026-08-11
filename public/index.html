@@ -123,16 +123,20 @@
         /* ===== CAPTURE SCREEN ===== */
         .screen-capture {
             padding: 0;
+            flex-direction: column;
         }
 
         .capture-controls {
             background: var(--white);
-            border-bottom: 1px solid var(--primary-light);
+            border-top: 1px solid var(--primary-light);
             display: flex;
             gap: var(--spacing-lg);
             padding: var(--spacing-md);
             justify-content: center;
             box-shadow: var(--shadow-sm);
+            order: 3;
+            position: relative;
+            z-index: 10;
         }
 
         .mode-btn {
