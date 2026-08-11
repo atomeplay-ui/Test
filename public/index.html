@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Notre Mariage - Album de Moments</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ===== DESIGN SYSTEM MODERNE ===== */
+        :root {
+            /* Couleurs sophistiquées */
+            --primary: #D4AF37;           /* Doré */
+            --primary-light: #E8D5B0;     /* Doré clair */
+            --accent: #C1666B;            /* Rose terracotta */
+            --accent-light: #E8C5C9;      /* Rose clair */
+            --dark: #1F1F1F;              /* Noir profond */
+            --gray-light: #F5F3F0;        /* Gris très clair */
+            --gray: #9A9A9A;              /* Gris moyen */
+            --white: #FFFFFF;             /* Blanc pur */
+            
+            /* Espacements */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            
+            /* Typography */
+            --font-display: 'Playfair Display', serif;
+            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            
+            /* Shadows */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.12);
+            --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.16);
+            
+            /* Transitions */
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: var(--font-body);
+            background: var(--white);
+            color: var(--dark);
+            overflow: hidden;
+        }
+
+        /* ===== LAYOUT PRINCIPAL ===== */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            background: linear-gradient(135deg, var(--gray-light) 0%, var(--white) 100%);
+        }
+
+        /* ===== HEADER ===== */
+        .status-bar {
+            height: 56px;
+            background: var(--white);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-top: max(0px, env(safe-area-inset-top));
+            box-shadow: var(--shadow-sm);
+        }
+
+        .status-bar h1 {
+            font-family: var(--font-display);
+            font-size: 1.5em;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===== CONTENT AREA ===== */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 90px;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+
+        .content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        /* ===== SCREEN VIEWS ===== */
+        .screen {
+            display: none;
+            height: 100%;
+            width: 100%;
+            flex-direction: column;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* ===== CAPTURE SCREEN ===== */
+        .screen-capture {
+            padding: 0;
+        }
+
+        .capture-controls {
+            background: var(--white);
+            border-bottom: 1px solid var(--primary-light);
+            display: flex;
+            gap: var(--spacing-lg);
+            padding: var(--spacing-md);
+            justify-content: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .mode-btn {
+            padding: var(--spacing-sm) var(--spacing-lg);
+            border: 2px solid var(--primary-light);
+            background: var(--white);
+            color: var(--dark);
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            font-size: 0.95em;
+        }
+
+        .mode-btn:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: var(--white);
+            border-color: transparent;
+        }
+
+        .camera-section {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            padding: var(--spacing-lg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: var(--spacing-lg);
+        }
+
+        .camera-btn {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 3px solid var(--white);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+            color: var(--white);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8em;
+            transition: var(--transition);
+            box-shadow: var(--shadow-lg);
+            flex-shrink: 0;
+        }
+
+        .camera-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 20px 40px rgba(193, 102, 107, 0.4);
+        }
+
+        .camera-btn:active {
+            transform: scale(0.95);
+        }
+
+        .camera-btn.secondary {
+            width: 56px;
+            height: 56px;
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--white);
+            font-size: 1.3em;
+            backdrop-filter: blur(10px);
+        }
+
+        .video-timer {
+            position: absolute;
+            top: var(--spacing-lg);
+            left: var(--spacing-lg);
+            background: rgba(193, 102, 107, 0.9);
+            color: var(--white);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1em;
+            z-index: 11;
+            backdrop-filter: blur(10px);
+        }
+
+        /* ===== PREVIEW SCREEN ===== */
+        .screen-preview {
+            padding: var(--spacing-lg);
+            justify-content: flex-start;
+            gap: var(--spacing-lg);
+        }
+
+        .preview-container {
+            width: 100%;
+            aspect-ratio: 9/16;
+            background: var(--dark);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        #preview-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+
+        /* ===== AUDIO SCREEN ===== */
+        .screen-audio {
+            padding: var(--spacing-lg);
+            padding-bottom: 280px;
+            gap: var(--spacing-lg);
+        }
+
+        .audio-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--primary-light);
+        }
+
+        .audio-card h3 {
+            font-family: var(--font-display);
+            font-size: 1.3em;
+            margin-bottom: var(--spacing-md);
+            color: var(--primary);
+        }
+
+        .audio-recorder {
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent-light) 100%);
+            border-radius: 16px;
+            padding: var(--spacing-lg);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .record-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid var(--white);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+            color: var(--white);
+            font-size: 2em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-lg);
+            transition: var(--transition);
+        }
+
+        .record-button:hover {
+            transform: scale(1.1);
+        }
+
+        .record-button.recording {
+            animation: recordPulse 1s infinite;
+        }
+
+        @keyframes recordPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(193, 102, 107, 0.7); }
+            50% { box-shadow: 0 0 0 20px rgba(193, 102, 107, 0); }
+        }
+
+        .audio-timer {
+            font-family: 'Courier New', monospace;
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 1px solid var(--primary-light);
+            border-radius: 12px;
+            font-family: var(--font-body);
+            font-size: 1em;
+            transition: var(--transition);
+            background: var(--gray-light);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+            background: var(--white);
+        }
+
+        .form-input::placeholder {
+            color: var(--gray);
+        }
+
+        .audio-preview {
+            background: var(--gray-light);
+            border-radius: 12px;
+            padding: var(--spacing-md);
+            margin: var(--spacing-md) 0;
+        }
+
+        .audio-preview audio {
+            width: 100%;
+            height: 32px;
+        }
+
+        /* ===== GALLERY SCREEN ===== */
+        .screen-gallery {
+            flex-direction: column;
+            padding: 0;
+        }
+
+        .gallery-controls {
+            background: var(--white);
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--primary-light);
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            flex-wrap: wrap;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .filter-btn {
+            padding: var(--spacing-sm) var(--spacing-lg);
+            border: 2px solid var(--primary-light);
+            background: var(--white);
+            color: var(--dark);
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            font-size: 0.9em;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: var(--white);
+            border-color: transparent;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg);
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .gallery-item {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--gray-light);
+            cursor: pointer;
+            position: relative;
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+            border: 2px solid transparent;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-light);
+        }
+
+        .gallery-item img,
+        .gallery-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .gallery-item-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-md);
+            backdrop-filter: blur(5px);
+        }
+
+        .gallery-item:hover .gallery-item-overlay {
+            display: flex;
+        }
+
+        .gallery-action-btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85em;
+            background: var(--white);
+            color: var(--dark);
+        }
+
+        .gallery-action-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .gallery-action-btn.delete {
+            background: var(--accent);
+            color: var(--white);
+        }
+
+        /* ===== MESSAGES SCREEN ===== */
+        .screen-messages {
+            flex-direction: column;
+            padding: var(--spacing-lg);
+            gap: var(--spacing-md);
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .message-card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-md);
+            border-left: 4px solid var(--primary);
+            transition: var(--transition);
+        }
+
+        .message-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateX(4px);
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 1px solid var(--primary-light);
+        }
+
+        .message-author {
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 1.1em;
+        }
+
+        .message-date {
+            font-size: 0.85em;
+            color: var(--gray);
+        }
+
+        .message-duration {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .message-audio {
+            margin: var(--spacing-md) 0;
+        }
+
+        .message-audio audio {
+            width: 100%;
+            height: 36px;
+        }
+
+        .message-text {
+            font-style: italic;
+            color: var(--gray);
+            margin-bottom: var(--spacing-md);
+            line-height: 1.6;
+        }
+
+        .message-actions {
+            display: flex;
+            gap: var(--spacing-md);
+        }
+
+        .message-action-btn {
+            flex: 1;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9em;
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .message-action-btn:hover {
+            background: var(--primary);
+            color: var(--white);
+            transform: translateY(-2px);
+        }
+
+        .message-action-btn.delete {
+            background: rgba(193, 102, 107, 0.1);
+            color: var(--accent);
+        }
+
+        .message-action-btn.delete:hover {
+            background: var(--accent);
+            color: var(--white);
+        }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--gray);
+            text-align: center;
+            padding: var(--spacing-xl);
+        }
+
+        .empty-icon {
+            font-size: 4em;
+            margin-bottom: var(--spacing-lg);
+            opacity: 0.5;
+        }
+
+        .empty-text {
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        /* ===== MODALS ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 500;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: 20px;
+            padding: var(--spacing-xl);
+            width: 90%;
+            max-width: 400px;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(40px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            font-family: var(--font-display);
+            font-size: 1.5em;
+            margin-bottom: var(--spacing-lg);
+            color: var(--primary);
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 2px solid var(--primary-light);
+            border-radius: 12px;
+            font-family: var(--font-body);
+            font-size: 1em;
+            margin-bottom: var(--spacing-md);
+            transition: var(--transition);
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+        }
+
+        .modal-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            padding: var(--spacing-md) var(--spacing-lg);
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 1em;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: var(--white);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--gray-light);
+            color: var(--dark);
+            border: 2px solid var(--primary-light);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: rgba(193, 102, 107, 0.1);
+            color: var(--accent);
+            border: 2px solid var(--accent-light);
+        }
+
+        .btn-danger:hover {
+            background: var(--accent);
+            color: var(--white);
+            border-color: transparent;
+        }
+
+        /* ===== BOTTOM MENU ===== */
+        .bottom-menu {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: var(--white);
+            border-top: 1px solid var(--primary-light);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: max(0px, env(safe-area-inset-bottom));
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+            z-index: 100;
+        }
+
+        .menu-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-xs);
+            cursor: pointer;
+            padding: var(--spacing-md);
+            border-radius: 12px;
+            transition: var(--transition);
+            color: var(--gray);
+            font-size: 0.8em;
+            text-align: center;
+        }
+
+        .menu-item:hover {
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .menu-item.active {
+            color: var(--primary);
+        }
+
+        .menu-icon {
+            font-size: 1.6em;
+        }
+
+        /* ===== TOASTS ===== */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: var(--spacing-lg);
+            right: var(--spacing-lg);
+            padding: var(--spacing-lg);
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: var(--white);
+            text-align: center;
+            display: none;
+            z-index: 200;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 480px) {
+            .status-bar h1 {
+                font-size: 1.2em;
+            }
+
+            .gallery-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--spacing-md);
+            }
+
+            .modal-content {
+                width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <div class="status-bar">
+            <h1>💍 Notre Mariage</h1>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+            <!-- CAPTURE SCREEN -->
+            <div class="screen screen-capture active">
+                <div class="capture-controls">
+                    <button class="mode-btn active" id="photoModeBtn" onclick="switchMode('photo')">
+                        <i class="fas fa-camera"></i> Photo
+                    </button>
+                    <button class="mode-btn" id="videoModeBtn" onclick="switchMode('video')">
+                        <i class="fas fa-video"></i> Vidéo
+                    </button>
+                </div>
+                <div class="camera-section">
+                    <video id="video" autoplay playsinline muted></video>
+                    <div id="videoTimer" class="video-timer" style="display: none;">00:00</div>
+                    <div class="camera-overlay">
+                        <button class="camera-btn secondary" id="toggleCameraBtn" type="button" title="Changer de caméra">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="camera-btn" id="captureBtn" type="button" onclick="capturePhoto()" title="Prendre une photo">
+                            <i class="fas fa-circle"></i>
+                        </button>
+                        <button class="camera-btn" id="recordVideoBtn" type="button" style="display: none;" onclick="toggleVideoRecording()" title="Enregistrer une vidéo">
+                            <i class="fas fa-circle" style="color: #fff;"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PREVIEW SCREEN -->
+            <div class="screen screen-preview">
+                <div class="preview-container">
+                    <img id="preview-image" src="" alt="Aperçu">
+                </div>
+                <div class="preview-actions">
+                    <button class="btn btn-primary" id="savePhotoBtn">
+                        <i class="fas fa-check"></i> Sauvegarder
+                    </button>
+                    <button class="btn btn-secondary" id="retakePhotoBtn">
+                        <i class="fas fa-redo"></i> Reprendre
+                    </button>
+                </div>
+            </div>
+
+            <!-- AUDIO SCREEN -->
+            <div class="screen screen-audio">
+                <div class="audio-card">
+                    <h3>Enregistrez un message</h3>
+                    <div class="audio-recorder">
+                        <button class="record-button" id="recordBtn" title="Appuyez pour enregistrer">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                        <div class="audio-timer" id="audioTimer">00:00</div>
+                    </div>
+                </div>
+
+                <div class="audio-card" id="audioPlaybackSection" style="display: none;">
+                    <h3>Aperçu</h3>
+                    <div class="audio-preview">
+                        <audio id="audioPreview" controls></audio>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-input" id="audioAuthorInput" placeholder="Votre nom">
+                        <textarea class="form-input" id="audioMessageInput" placeholder="Votre message (optionnel)" style="min-height: 100px; resize: none;"></textarea>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
+                            <button class="btn btn-primary" id="saveAudioBtn">
+                                <i class="fas fa-check"></i> Sauvegarder
+                            </button>
+                            <button class="btn btn-secondary" id="retakeAudioBtn">
+                                <i class="fas fa-redo"></i> Réenregistrer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GALLERY SCREEN -->
+            <div class="screen screen-gallery">
+                <div class="gallery-controls">
+                    <button class="filter-btn active" id="filterAll" onclick="filterGallery('all')">Tous</button>
+                    <button class="filter-btn" id="filterPhotos" onclick="filterGallery('photo')">📸 Photos</button>
+                    <button class="filter-btn" id="filterVideos" onclick="filterGallery('video')">🎬 Vidéos</button>
+                </div>
+                <div class="gallery-grid" id="gallery">
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <div class="empty-icon">🖼️</div>
+                        <div class="empty-text">Aucune photo pour le moment</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MESSAGES SCREEN -->
+            <div class="screen screen-messages">
+                <div class="messages-container" id="messagesList">
+                    <div class="empty-state">
+                        <div class="empty-icon">💬</div>
+                        <div class="empty-text">Aucun message</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PASSWORD MODAL -->
+        <div class="modal-overlay" id="passwordModal">
+            <div class="modal-content">
+                <div class="modal-header">🔐 Accès Protégé</div>
+                <input type="password" class="modal-input" id="passwordInput" placeholder="Entrez le mot de passe">
+                <div class="modal-buttons">
+                    <button class="btn btn-primary" id="confirmPasswordBtn">Valider</button>
+                    <button class="btn btn-secondary" id="cancelPasswordBtn">Annuler</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- IMAGE MODAL -->
+        <div class="modal-overlay" id="imageModal">
+            <div style="position: relative; max-width: 90vw; max-height: 90vh;">
+                <img id="modalImage" src="" alt="Photo" style="max-width: 100%; max-height: 100%; border-radius: 16px;">
+                <button id="closeImageBtn" style="position: absolute; top: -12px; right: -12px; width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: white; border: none; cursor: pointer; font-size: 1.2em; box-shadow: var(--shadow-lg);">✕</button>
+            </div>
+        </div>
+
+        <!-- TOAST -->
+        <div class="toast" id="statusToast"></div>
+
+        <!-- BOTTOM MENU -->
+        <div class="bottom-menu">
+            <div class="menu-item active" data-screen="capture">
+                <div class="menu-icon"><i class="fas fa-camera"></i></div>
+                <div>Capture</div>
+            </div>
+            <div class="menu-item" data-screen="audio">
+                <div class="menu-icon"><i class="fas fa-microphone"></i></div>
+                <div>Message</div>
+            </div>
+            <div class="menu-item" data-screen="gallery">
+                <div class="menu-icon"><i class="fas fa-images"></i></div>
+                <div>Galerie</div>
+            </div>
+            <div class="menu-item" data-screen="messages">
+                <div class="menu-icon"><i class="fas fa-envelope"></i></div>
+                <div>Messages</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden canvas -->
+    <canvas id="canvas" style="display: none;"></canvas>
+
+    <script>
+        const PASSWORD = "2024";
+
+        const state = {
+            currentScreen: 'capture',
+            stream: null,
+            mediaRecorder: null,
+            audioChunks: [],
+            currentImageData: null,
+            facingMode: 'user',
+            isRecording: false,
+            captureMode: 'photo',
+            videoRecorder: null,
+            videoChunks: [],
+            videoSeconds: 0
+        };
+
+        const dom = {
+            video: document.getElementById('video'),
+            canvas: document.getElementById('canvas'),
+            captureBtn: document.getElementById('captureBtn'),
+            toggleCameraBtn: document.getElementById('toggleCameraBtn'),
+            previewImage: document.getElementById('preview-image'),
+            savePhotoBtn: document.getElementById('savePhotoBtn'),
+            retakePhotoBtn: document.getElementById('retakePhotoBtn'),
+            recordBtn: document.getElementById('recordBtn'),
+            audioTimer: document.getElementById('audioTimer'),
+            audioPreview: document.getElementById('audioPreview'),
+            audioPlaybackSection: document.getElementById('audioPlaybackSection'),
+            audioAuthorInput: document.getElementById('audioAuthorInput'),
+            audioMessageInput: document.getElementById('audioMessageInput'),
+            saveAudioBtn: document.getElementById('saveAudioBtn'),
+            retakeAudioBtn: document.getElementById('retakeAudioBtn'),
+            gallery: document.getElementById('gallery'),
+            messagesList: document.getElementById('messagesList'),
+            passwordModal: document.getElementById('passwordModal'),
+            passwordInput: document.getElementById('passwordInput'),
+            confirmPasswordBtn: document.getElementById('confirmPasswordBtn'),
+            cancelPasswordBtn: document.getElementById('cancelPasswordBtn'),
+            imageModal: document.getElementById('imageModal'),
+            modalImage: document.getElementById('modalImage'),
+            closeImageBtn: document.getElementById('closeImageBtn'),
+            statusToast: document.getElementById('statusToast'),
+            screens: document.querySelectorAll('.screen'),
+            menuItems: document.querySelectorAll('.menu-item')
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeCamera();
+            setupEventListeners();
+            loadGallery();
+            loadMessages();
+        });
+
+        async function initializeCamera() {
+            try {
+                try {
+                    state.stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: state.facingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
+                        audio: false
+                    });
+                } catch (err) {
+                    state.stream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: false
+                    });
+                }
+                dom.video.srcObject = state.stream;
+            } catch (error) {
+                showToast('❌ Erreur d\'accès à la caméra');
+            }
+        }
+
+        async function toggleCamera() {
+            if (state.stream) {
+                state.stream.getTracks().forEach(track => track.stop());
+            }
+            state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
+            await initializeCamera();
+        }
+
+        function capturePhoto() {
+            try {
+                if (!dom.video.srcObject) {
+                    showToast('❌ Caméra non disponible');
+                    return;
+                }
+                const context = dom.canvas.getContext('2d');
+                dom.canvas.width = dom.video.videoWidth;
+                dom.canvas.height = dom.video.videoHeight;
+                context.drawImage(dom.video, 0, 0);
+                state.currentImageData = dom.canvas.toDataURL('image/jpeg', 0.95);
+                dom.previewImage.src = state.currentImageData;
+                showScreen('screen-preview');
+            } catch (error) {
+                showToast('❌ Erreur de capture');
+            }
+        }
+
+        function retakePhoto() {
+            state.currentImageData = null;
+            showScreen('screen-capture');
+        }
+
+        async function savePhoto() {
+            try {
+                showToast('📤 Envoi au serveur...');
+                const response = await fetch(state.currentImageData);
+                const blob = await response.blob();
+                const formData = new FormData();
+                formData.append('file', blob, `photo-${Date.now()}.jpg`);
+                formData.append('fileType', 'photo');
+
+                const uploadResponse = await fetch('/api/upload?password=2024', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadResponse.ok) throw new Error('Erreur serveur');
+                const result = await uploadResponse.json();
+
+                if (result.success) {
+                    showToast('✅ Photo sauvegardée!');
+                    retakePhoto();
+                    loadGallery();
+                } else {
+                    showToast('❌ Erreur: ' + result.error);
+                }
+            } catch (error) {
+                showToast('❌ Erreur d\'envoi');
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                state.mediaRecorder = new MediaRecorder(stream);
+                state.audioChunks = [];
+                state.isRecording = true;
+                let seconds = 0;
+
+                dom.recordBtn.classList.add('recording');
+                const timer = setInterval(() => {
+                    seconds++;
+                    const mins = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    dom.audioTimer.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                }, 1000);
+
+                state.mediaRecorder.ondataavailable = (e) => state.audioChunks.push(e.data);
+                state.mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    dom.audioPreview.src = audioUrl;
+                    dom.audioPlaybackSection.style.display = 'block';
+                    clearInterval(timer);
+                    state.isRecording = false;
+                    dom.recordBtn.classList.remove('recording');
+                };
+
+                state.mediaRecorder.start();
+            } catch (error) {
+                showToast('❌ Erreur microphone');
+            }
+        }
+
+        function stopRecording() {
+            if (state.mediaRecorder && state.isRecording) {
+                state.mediaRecorder.stop();
+                state.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        dom.recordBtn.addEventListener('click', () => {
+            if (state.isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        function retakeAudio() {
+            state.audioChunks = [];
+            dom.audioPreview.src = '';
+            dom.audioPlaybackSection.style.display = 'none';
+            dom.audioAuthorInput.value = '';
+            dom.audioMessageInput.value = '';
+            dom.audioTimer.textContent = '00:00';
+        }
+
+        async function saveAudio() {
+            try {
+                if (!dom.audioPreview.src) {
+                    showToast('❌ Aucun enregistrement');
+                    return;
+                }
+
+                showToast('📤 Envoi au serveur...');
+                const response = await fetch(dom.audioPreview.src);
+                const audioBlob = await response.blob();
+
+                const formData = new FormData();
+                formData.append('file', audioBlob, `audio-${Date.now()}.webm`);
+                formData.append('fileType', 'audio');
+                formData.append('author', dom.audioAuthorInput.value || '');
+                formData.append('message', dom.audioMessageInput.value || '');
+
+                const uploadResponse = await fetch('/api/upload?password=2024', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadResponse.ok) throw new Error('Erreur serveur');
+                const result = await uploadResponse.json();
+
+                if (result.success) {
+                    showToast('✅ Message sauvegardé!');
+                    retakeAudio();
+                    showScreen('screen-audio');
+                    loadMessages();
+                } else {
+                    showToast('❌ Erreur: ' + result.error);
+                }
+            } catch (error) {
+                showToast('❌ Erreur d\'envoi');
+            }
+        }
+
+        async function loadGallery() {
+            try {
+                const photoResponse = await fetch('/api/files?type=photo');
+                const photosData = await photoResponse.json();
+
+                const videoResponse = await fetch('/api/files?type=video');
+                const videosData = await videoResponse.json();
+
+                const allMedia = [];
+                if (photosData.files) allMedia.push(...photosData.files);
+                if (videosData.files) allMedia.push(...videosData.files);
+
+                allMedia.sort((a, b) => new Date(b.metadata.uploadedAt) - new Date(a.metadata.uploadedAt));
+
+                dom.gallery.innerHTML = '';
+
+                if (allMedia.length === 0) {
+                    dom.gallery.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">🖼️</div><div class="empty-text">Aucune photo</div></div>';
+                    return;
+                }
+
+                allMedia.forEach(media => {
+                    const item = document.createElement('div');
+                    item.className = 'gallery-item';
+
+                    const isVideo = media.metadata.type === 'video';
+                    const mediaTag = isVideo ? 
+                        `<video style="width:100%; height:100%; object-fit:cover;"><source src="${media.url}" type="video/webm"></video>` :
+                        `<img src="${media.url}" alt="Photo" style="width:100%; height:100%; object-fit:cover;">`;
+
+                    item.innerHTML = `${mediaTag}
+                        <div class="gallery-item-overlay">
+                            <button class="gallery-action-btn" onclick="downloadMedia('${media.fileId}', '${media.url}')">⬇️</button>
+                            <button class="gallery-action-btn delete" onclick="deleteMedia('${media.fileId}')">🗑️</button>
+                        </div>`;
+
+                    if (!isVideo) {
+                        const img = item.querySelector('img');
+                        img.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            openImageModal(media.url);
+                        });
+                    }
+
+                    dom.gallery.appendChild(item);
+                });
+            } catch (error) {
+                dom.gallery.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">⚠️</div><div class="empty-text">Erreur de chargement</div></div>';
+            }
+        }
+
+        async function deleteMedia(fileId) {
+            if (!confirm('Confirmer la suppression?')) return;
+
+            try {
+                showToast('✅ Suppression...');
+                const response = await fetch(`/api/files/${fileId}?password=2024`, { method: 'DELETE' });
+
+                if (response.ok) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    window.location.reload();
+                } else {
+                    showToast('❌ Erreur de suppression');
+                }
+            } catch (error) {
+                showToast('❌ Erreur');
+            }
+        }
+
+        function downloadMedia(fileId, url) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileId;
+            link.click();
+        }
+
+        function filterGallery(type) {
+            document.getElementById('filterAll').classList.toggle('active', type === 'all');
+            document.getElementById('filterPhotos').classList.toggle('active', type === 'photo');
+            document.getElementById('filterVideos').classList.toggle('active', type === 'video');
+
+            const items = document.querySelectorAll('.gallery-item');
+            items.forEach(item => {
+                if (type === 'all') {
+                    item.style.display = 'block';
+                } else if (type === 'photo') {
+                    item.style.display = item.querySelector('img') ? 'block' : 'none';
+                } else if (type === 'video') {
+                    item.style.display = item.querySelector('video') ? 'block' : 'none';
+                }
+            });
+        }
+
+        async function loadMessages() {
+            try {
+                const response = await fetch('/api/files?type=audio');
+                const audioData = await response.json();
+
+                dom.messagesList.innerHTML = '';
+
+                if (!audioData.files || audioData.files.length === 0) {
+                    dom.messagesList.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">Aucun message</div></div>';
+                    return;
+                }
+
+                audioData.files.sort((a, b) => new Date(b.metadata.uploadedAt) - new Date(a.metadata.uploadedAt));
+
+                const container = document.createElement('div');
+                container.className = 'messages-container';
+
+                audioData.files.forEach(msg => {
+                    const card = document.createElement('div');
+                    card.className = 'message-card';
+
+                    const date = new Date(msg.metadata.uploadedAt).toLocaleDateString('fr-FR');
+                    const audioUrl = `/audio/${msg.fileId}`;
+                    const author = msg.metadata.author || 'Invité anonyme';
+                    const messageText = msg.metadata.message || '';
+
+                    card.innerHTML = `
+                        <div class="message-header">
+                            <div>
+                                <div class="message-author">👤 ${author}</div>
+                                <div class="message-date">${date}</div>
+                            </div>
+                            <div class="message-duration" id="duration-${msg.fileId}">⏱️ 0:00</div>
+                        </div>
+                        <div class="message-audio">
+                            <audio controls src="${audioUrl}" id="audio-${msg.fileId}" onloadedmetadata="updateAudioDuration('${msg.fileId}')"></audio>
+                        </div>
+                        ${messageText ? `<div class="message-text">"${messageText}"</div>` : ''}
+                        <div class="message-actions">
+                            <button class="message-action-btn" onclick="downloadMedia('${msg.fileId}', '${audioUrl}')">⬇️ Télécharger</button>
+                            <button class="message-action-btn delete" onclick="deleteMedia('${msg.fileId}')">🗑️ Supprimer</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+
+                    setTimeout(() => {
+                        const audioElement = document.getElementById(`audio-${msg.fileId}`);
+                        if (audioElement && audioElement.duration) {
+                            updateAudioDuration(msg.fileId);
+                        }
+                    }, 500);
+                });
+
+                dom.messagesList.appendChild(container);
+            } catch (error) {
+                dom.messagesList.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Erreur</div></div>';
+            }
+        }
+
+        function updateAudioDuration(fileId) {
+            const audioElement = document.getElementById(`audio-${fileId}`);
+            const durationElement = document.getElementById(`duration-${fileId}`);
+
+            if (audioElement && durationElement && audioElement.duration) {
+                const mins = Math.floor(audioElement.duration / 60);
+                const secs = Math.ceil(audioElement.duration % 60);
+                durationElement.textContent = `⏱️ ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }
+        }
+
+        function showScreen(screenName) {
+            dom.screens.forEach(s => s.classList.remove('active'));
+            document.querySelector('.screen-' + screenName.split('-')[1]).classList.add('active');
+            state.currentScreen = screenName;
+        }
+
+        dom.menuItems.forEach(item => {
+            item.addEventListener('click', async () => {
+                const screen = item.dataset.screen;
+
+                if (screen === 'gallery' || screen === 'messages') {
+                    dom.passwordModal.classList.add('active');
+                    dom.passwordInput.focus();
+                    dom.passwordInput.dataset.targetScreen = screen;
+                } else {
+                    showMenuScreen(screen);
+                }
+            });
+        });
+
+        function showMenuScreen(screen) {
+            dom.menuItems.forEach(m => m.classList.remove('active'));
+            document.querySelector(`[data-screen="${screen}"]`).classList.add('active');
+            dom.screens.forEach(s => s.classList.remove('active'));
+            document.querySelector('.screen-' + screen).classList.add('active');
+            state.currentScreen = screen;
+        }
+
+        dom.confirmPasswordBtn.addEventListener('click', async () => {
+            if (dom.passwordInput.value === PASSWORD) {
+                const targetScreen = dom.passwordInput.dataset.targetScreen;
+                dom.passwordModal.classList.remove('active');
+                dom.passwordInput.value = '';
+                showMenuScreen(targetScreen);
+
+                if (targetScreen === 'gallery') {
+                    await loadGallery();
+                } else if (targetScreen === 'messages') {
+                    loadMessages();
+                }
+            } else {
+                showToast('❌ Mot de passe incorrect');
+                dom.passwordInput.value = '';
+            }
+        });
+
+        dom.cancelPasswordBtn.addEventListener('click', () => {
+            dom.passwordModal.classList.remove('active');
+            dom.passwordInput.value = '';
+        });
+
+        dom.passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') dom.confirmPasswordBtn.click();
+        });
+
+        dom.savePhotoBtn.addEventListener('click', savePhoto);
+        dom.retakePhotoBtn.addEventListener('click', retakePhoto);
+        dom.toggleCameraBtn.addEventListener('click', toggleCamera);
+        dom.saveAudioBtn.addEventListener('click', saveAudio);
+        dom.retakeAudioBtn.addEventListener('click', retakeAudio);
+
+        function openImageModal(imageSrc) {
+            dom.modalImage.src = imageSrc;
+            dom.imageModal.classList.add('active');
+        }
+
+        dom.closeImageBtn.addEventListener('click', () => dom.imageModal.classList.remove('active'));
+        dom.imageModal.addEventListener('click', (e) => {
+            if (e.target === dom.imageModal) dom.imageModal.classList.remove('active');
+        });
+
+        function showToast(message) {
+            dom.statusToast.textContent = message;
+            dom.statusToast.classList.add('show');
+            setTimeout(() => dom.statusToast.classList.remove('show'), 3000);
+        }
+
+        function switchMode(mode) {
+            state.captureMode = mode;
+            const photoBtn = document.getElementById('photoModeBtn');
+            const videoBtn = document.getElementById('videoModeBtn');
+            const captureBtn = document.getElementById('captureBtn');
+            const recordVideoBtn = document.getElementById('recordVideoBtn');
+
+            if (mode === 'photo') {
+                photoBtn.classList.add('active');
+                videoBtn.classList.remove('active');
+                captureBtn.style.display = 'flex';
+                recordVideoBtn.style.display = 'none';
+                document.getElementById('videoTimer').style.display = 'none';
+            } else {
+                photoBtn.classList.remove('active');
+                videoBtn.classList.add('active');
+                captureBtn.style.display = 'none';
+                recordVideoBtn.style.display = 'flex';
+            }
+        }
+
+        async function toggleVideoRecording() {
+            if (state.videoRecorder && state.videoRecorder.state === 'recording') {
+                stopVideoRecording();
+            } else {
+                startVideoRecording();
+            }
+        }
+
+        async function startVideoRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: state.facingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
+                    audio: true
+                });
+
+                state.videoRecorder = new MediaRecorder(stream);
+                state.videoChunks = [];
+                state.videoSeconds = 0;
+
+                const videoTimer = document.getElementById('videoTimer');
+                const recordVideoBtn = document.getElementById('recordVideoBtn');
+
+                recordVideoBtn.classList.add('recording');
+                videoTimer.style.display = 'block';
+
+                const timer = setInterval(() => {
+                    state.videoSeconds++;
+                    const mins = Math.floor(state.videoSeconds / 60);
+                    const secs = state.videoSeconds % 60;
+                    videoTimer.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                }, 1000);
+
+                state.videoRecorder.ondataavailable = (e) => state.videoChunks.push(e.data);
+                state.videoRecorder.onstop = () => {
+                    const videoBlob = new Blob(state.videoChunks, { type: 'video/webm' });
+                    const videoUrl = URL.createObjectURL(videoBlob);
+                    saveVideoToGallery(videoUrl);
+                    clearInterval(timer);
+                    recordVideoBtn.classList.remove('recording');
+                    videoTimer.style.display = 'none';
+                    showToast('✅ Vidéo sauvegardée!');
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                state.videoRecorder.start();
+                showToast('🔴 Enregistrement vidéo...');
+            } catch (error) {
+                showToast('❌ Erreur vidéo');
+            }
+        }
+
+        function stopVideoRecording() {
+            if (state.videoRecorder && state.videoRecorder.state === 'recording') {
+                state.videoRecorder.stop();
+            }
+        }
+
+        async function saveVideoToGallery(videoUrl) {
+            try {
+                showToast('📤 Envoi vidéo...');
+                const response = await fetch(videoUrl);
+                const videoBlob = await response.blob();
+
+                const formData = new FormData();
+                formData.append('file', videoBlob, `video-${Date.now()}.webm`);
+                formData.append('fileType', 'video');
+
+                const uploadResponse = await fetch('/api/upload?password=2024', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadResponse.ok) throw new Error('Erreur serveur');
+                const result = await uploadResponse.json();
+
+                if (result.success) {
+                    showToast('✅ Vidéo uploadée!');
+                    await loadGallery();
+                } else {
+                    showToast('❌ Erreur: ' + result.error);
+                }
+            } catch (error) {
+                showToast('❌ Erreur d\'envoi');
+            }
+        }
+
+        function setupEventListeners() {
+            // Les événements sont configurés ci-dessus
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (state.stream) state.stream.getTracks().forEach(t => t.stop());
+            if (state.videoRecorder && state.videoRecorder.state === 'recording') {
+                state.videoRecorder.stop();
+                state.videoRecorder.stream.getTracks().forEach(t => t.stop());
+            }
+        });
+    </script>
+</body>
+</html>
