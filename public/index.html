@@ -375,8 +375,10 @@
         /* ===== AUDIO SCREEN ===== */
         .screen-audio {
             padding: var(--spacing-lg);
-            padding-bottom: 280px;
+            padding-bottom: 120px;
             gap: var(--spacing-lg);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .audio-card {
@@ -1400,10 +1402,33 @@
             }
         }
 
+        // Détecte un type MIME audio supporté par le navigateur pour l'enregistrement.
+        // iOS/Safari ne supporte PAS le WebM -> il faut mp4/aac. Chrome/Android -> webm.
+        function getSupportedAudioMime() {
+            const candidates = [
+                'audio/mp4',
+                'audio/mp4;codecs=mp4a.40.2',
+                'audio/aac',
+                'audio/webm;codecs=opus',
+                'audio/webm'
+            ];
+            if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported) {
+                for (const c of candidates) {
+                    if (MediaRecorder.isTypeSupported(c)) return c;
+                }
+            }
+            return '';
+        }
+
         async function startRecording() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                state.mediaRecorder = new MediaRecorder(stream);
+
+                const mimeType = getSupportedAudioMime();
+                state.audioMime = mimeType || 'audio/webm';
+                state.mediaRecorder = mimeType
+                    ? new MediaRecorder(stream, { mimeType })
+                    : new MediaRecorder(stream);
                 state.audioChunks = [];
                 state.isRecording = true;
                 let seconds = 0;
@@ -1418,7 +1443,10 @@
 
                 state.mediaRecorder.ondataavailable = (e) => state.audioChunks.push(e.data);
                 state.mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                    // Utiliser le vrai type produit par le recorder pour la lecture
+                    const blobType = state.mediaRecorder.mimeType || state.audioMime || 'audio/webm';
+                    const audioBlob = new Blob(state.audioChunks, { type: blobType });
+                    state.audioBlob = audioBlob;
                     const audioUrl = URL.createObjectURL(audioBlob);
                     dom.audioPreview.src = audioUrl;
                     dom.audioPlaybackSection.style.display = 'block';
@@ -1465,11 +1493,17 @@
                 }
 
                 showToast('📤 Envoi au serveur...');
-                const response = await fetch(dom.audioPreview.src);
-                const audioBlob = await response.blob();
+                const audioBlob = state.audioBlob || await (await fetch(dom.audioPreview.src)).blob();
+
+                // Déterminer l'extension selon le vrai type MIME (mp4 sur iOS, webm sur Chrome)
+                const blobType = audioBlob.type || '';
+                let ext = 'webm';
+                if (blobType.includes('mp4') || blobType.includes('aac') || blobType.includes('m4a')) ext = 'm4a';
+                else if (blobType.includes('ogg')) ext = 'ogg';
+                else if (blobType.includes('webm')) ext = 'webm';
 
                 const formData = new FormData();
-                formData.append('file', audioBlob, `audio-${Date.now()}.webm`);
+                formData.append('file', audioBlob, `audio-${Date.now()}.${ext}`);
                 formData.append('fileType', 'audio');
                 formData.append('author', dom.audioAuthorInput.value || '');
                 formData.append('message', dom.audioMessageInput.value || '');

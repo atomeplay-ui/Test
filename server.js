@@ -518,12 +518,44 @@ app.get('/audio/:fileId', async (req, res) => {
         return res.status(404).json({ error: 'Fichier non trouvé' });
       }
 
-      // Télécharger et servir le fichier
+      // Déterminer le bon type MIME selon l'extension du fichier.
+      // iOS enregistre en mp4/m4a (Safari ne lit PAS le webm) : il faut donc
+      // renvoyer le vrai Content-Type sinon le lecteur affiche "Erreur".
+      const name = (file.name || '').toLowerCase();
+      let contentType = 'audio/webm';
+      if (name.endsWith('.m4a') || name.endsWith('.mp4') || name.endsWith('.aac')) {
+        contentType = 'audio/mp4';
+      } else if (name.endsWith('.ogg')) {
+        contentType = 'audio/ogg';
+      } else if (name.endsWith('.mp3')) {
+        contentType = 'audio/mpeg';
+      } else if (name.endsWith('.wav')) {
+        contentType = 'audio/wav';
+      }
+
+      // Télécharger le fichier
       const fileContent = await file.download();
-      
-      res.setHeader('Content-Type', 'audio/webm');
+      const buffer = fileContent[0];
+
+      res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=86400');
-      res.send(fileContent[0]);
+      res.setHeader('Accept-Ranges', 'bytes');
+
+      // Support des requêtes Range (nécessaire pour la lecture audio sur iOS Safari)
+      const range = req.headers.range;
+      if (range) {
+        const parts = range.replace(/bytes=/, '').split('-');
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : buffer.length - 1;
+        const chunk = buffer.slice(start, end + 1);
+        res.status(206);
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${buffer.length}`);
+        res.setHeader('Content-Length', chunk.length);
+        return res.end(chunk);
+      }
+
+      res.setHeader('Content-Length', buffer.length);
+      res.send(buffer);
     } else {
       res.status(404).json({ error: 'Storage non disponible' });
     }
