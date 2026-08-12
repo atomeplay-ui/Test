@@ -1268,16 +1268,6 @@
             loadMessages();
         });
 
-        // Énumère les caméras disponibles (nécessite une permission déjà accordée)
-        async function refreshVideoDevices() {
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                state.videoDevices = devices.filter(d => d.kind === 'videoinput');
-            } catch (e) {
-                state.videoDevices = [];
-            }
-        }
-
         async function initializeCamera() {
             try {
                 // Arrêter le stream existant avant d'en démarrer un nouveau
@@ -1288,72 +1278,38 @@
 
                 const baseConstraints = { width: { ideal: 1280 }, height: { ideal: 960 } };
 
-                // 1) Si on a déjà énuméré plusieurs caméras, on cible par deviceId (fiable sur iPhone)
-                if (state.videoDevices.length > 1) {
-                    const device = state.videoDevices[state.currentDeviceIndex % state.videoDevices.length];
+                // Basculement simple AVANT / ARRIÈRE via facingMode uniquement
+                try {
+                    state.stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: { exact: state.facingMode }, ...baseConstraints },
+                        audio: false
+                    });
+                } catch (errExact) {
                     try {
                         state.stream = await navigator.mediaDevices.getUserMedia({
-                            video: { deviceId: { exact: device.deviceId }, ...baseConstraints },
+                            video: { facingMode: state.facingMode, ...baseConstraints },
                             audio: false
                         });
-                    } catch (errDevice) {
-                        state.stream = null;
-                    }
-                }
-
-                // 2) Sinon (ou si échec), on tente par facingMode
-                if (!state.stream) {
-                    try {
+                    } catch (errIdeal) {
                         state.stream = await navigator.mediaDevices.getUserMedia({
-                            video: { facingMode: { exact: state.facingMode }, ...baseConstraints },
+                            video: true,
                             audio: false
                         });
-                    } catch (errExact) {
-                        try {
-                            state.stream = await navigator.mediaDevices.getUserMedia({
-                                video: { facingMode: state.facingMode, ...baseConstraints },
-                                audio: false
-                            });
-                        } catch (errIdeal) {
-                            state.stream = await navigator.mediaDevices.getUserMedia({
-                                video: true,
-                                audio: false
-                            });
-                        }
                     }
                 }
 
                 dom.video.srcObject = state.stream;
                 await dom.video.play().catch(() => {});
-
-                // Après le premier accès, on peut énumérer les caméras (labels disponibles)
-                if (state.videoDevices.length === 0) {
-                    await refreshVideoDevices();
-                }
             } catch (error) {
                 showToast('❌ Erreur d\'accès à la caméra');
             }
         }
 
         async function toggleCamera() {
-            // S'assurer que la liste des caméras est à jour
-            if (state.videoDevices.length === 0) {
-                await refreshVideoDevices();
-            }
-
-            if (state.videoDevices.length > 1) {
-                // Basculer vers la caméra suivante par deviceId (fiable sur iPhone)
-                state.currentDeviceIndex = (state.currentDeviceIndex + 1) % state.videoDevices.length;
-                // Mettre à jour aussi facingMode pour cohérence
-                state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
-                showToast('🔄 Changement de caméra...');
-                await initializeCamera();
-            } else {
-                // Une seule caméra détectée : tenter le basculement par facingMode
-                state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
-                showToast(state.facingMode === 'user' ? '🤳 Caméra avant' : '📷 Caméra arrière');
-                await initializeCamera();
-            }
+            // Basculer uniquement entre AVANT (user) et ARRIÈRE (environment)
+            state.facingMode = state.facingMode === 'environment' ? 'user' : 'environment';
+            showToast(state.facingMode === 'user' ? '🤳 Caméra avant' : '📷 Caméra arrière');
+            await initializeCamera();
         }
 
 
@@ -1755,22 +1711,14 @@
 
         async function startVideoRecording() {
             try {
-                // Construire les contraintes vidéo : utiliser la même caméra que l'aperçu
-                let videoConstraints = { width: { ideal: 1280 }, height: { ideal: 960 } };
-                if (state.videoDevices.length > 1) {
-                    const device = state.videoDevices[state.currentDeviceIndex % state.videoDevices.length];
-                    videoConstraints.deviceId = { exact: device.deviceId };
-                } else {
-                    videoConstraints.facingMode = state.facingMode;
-                }
-
+                // Utiliser la même caméra (avant/arrière) que l'aperçu
                 let stream;
                 try {
                     stream = await navigator.mediaDevices.getUserMedia({
-                        video: videoConstraints,
+                        video: { facingMode: { exact: state.facingMode }, width: { ideal: 1280 }, height: { ideal: 960 } },
                         audio: true
                     });
-                } catch (errConstraint) {
+                } catch (errExact) {
                     stream = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: state.facingMode },
                         audio: true
