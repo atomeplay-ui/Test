@@ -1715,7 +1715,9 @@
 
         dom.savePhotoBtn.addEventListener('click', savePhoto);
         dom.retakePhotoBtn.addEventListener('click', retakePhoto);
-        dom.toggleCameraBtn.addEventListener('click', toggleCamera);
+        // NB: le bouton toggle utilise déjà onclick="toggleCamera()" dans le HTML.
+        // On n'ajoute PAS de second listener ici, sinon toggleCamera serait appelé
+        // deux fois par clic (avant -> arrière), revenant toujours à l'arrière.
         dom.saveAudioBtn.addEventListener('click', saveAudio);
         dom.retakeAudioBtn.addEventListener('click', retakeAudio);
 
