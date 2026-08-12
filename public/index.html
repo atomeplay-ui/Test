@@ -1270,38 +1270,65 @@
 
         async function initializeCamera() {
             try {
-                // Arrêter le stream existant avant d'en démarrer un nouveau
+                // Arrêter proprement le stream existant avant d'en démarrer un nouveau
                 if (state.stream) {
                     state.stream.getTracks().forEach(track => track.stop());
                     state.stream = null;
+                    dom.video.srcObject = null;
+                    // Laisser iOS libérer la caméra avant de la réutiliser
+                    await new Promise(r => setTimeout(r, 300));
                 }
 
                 const baseConstraints = { width: { ideal: 1280 }, height: { ideal: 960 } };
 
-                // Basculement simple AVANT / ARRIÈRE via facingMode uniquement
+                // 1) Tentative principale : contrainte facingMode stricte
                 try {
                     state.stream = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: { exact: state.facingMode }, ...baseConstraints },
                         audio: false
                     });
                 } catch (errExact) {
+                    // 2) Fallback : sélectionner explicitement une caméra par son label
+                    //    (utile sur les navigateurs qui ignorent facingMode: exact)
+                    let deviceId = null;
                     try {
+                        const devices = await navigator.mediaDevices.enumerateDevices();
+                        const cams = devices.filter(d => d.kind === 'videoinput');
+                        const wantFront = state.facingMode === 'user';
+                        const frontRe = /front|avant|face|user|selfie|facetime/i;
+                        const backRe = /back|arrière|arriere|rear|environment/i;
+
+                        const match = cams.find(c => wantFront ? frontRe.test(c.label) : backRe.test(c.label));
+                        if (match) {
+                            deviceId = match.deviceId;
+                        } else if (cams.length >= 2) {
+                            // Heuristique : 1re caméra = avant, dernière = arrière (souvent le cas)
+                            deviceId = wantFront ? cams[0].deviceId : cams[cams.length - 1].deviceId;
+                        }
+                    } catch (e) { /* ignore */ }
+
+                    if (deviceId) {
                         state.stream = await navigator.mediaDevices.getUserMedia({
-                            video: { facingMode: state.facingMode, ...baseConstraints },
+                            video: { deviceId: { exact: deviceId }, ...baseConstraints },
                             audio: false
                         });
-                    } catch (errIdeal) {
+                    } else {
+                        // 3) Dernier recours : facingMode "ideal"
                         state.stream = await navigator.mediaDevices.getUserMedia({
-                            video: true,
+                            video: { facingMode: state.facingMode, ...baseConstraints },
                             audio: false
                         });
                     }
                 }
 
                 dom.video.srcObject = state.stream;
+
+                // Miroir uniquement pour la caméra avant (effet selfie naturel)
+                dom.video.style.transform = state.facingMode === 'user' ? 'scaleX(-1)' : 'none';
+
                 await dom.video.play().catch(() => {});
             } catch (error) {
-                showToast('❌ Erreur d\'accès à la caméra');
+                showToast('❌ Impossible de changer de caméra');
             }
         }
 
