@@ -180,90 +180,155 @@
             object-fit: cover;
         }
 
+        /* ===== BARRE DE CONTRÔLE MODERNE ===== */
         .camera-overlay {
             position: absolute;
-            bottom: 20px;
+            bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
             padding: var(--spacing-lg);
+            padding-bottom: calc(var(--spacing-lg) + max(20px, env(safe-area-inset-bottom)));
             display: flex;
             justify-content: center;
-            align-items: flex-end;
-            gap: var(--spacing-lg);
-            flex-direction: column;
             align-items: center;
         }
 
-        .camera-button-group {
+        /* Barre glassmorphism moderne */
+        .camera-controls-bar {
             display: flex;
+            align-items: center;
             justify-content: center;
-            align-items: flex-end;
-            gap: var(--spacing-lg);
+            gap: var(--spacing-xl);
+            background: rgba(30, 30, 30, 0.55);
+            backdrop-filter: blur(20px) saturate(150%);
+            -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 40px;
+            padding: 12px 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
         }
 
         .camera-button-wrapper {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: var(--spacing-sm);
+            gap: 6px;
         }
 
         .camera-button-label {
-            color: var(--white);
-            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 0.75em;
             font-weight: 600;
             text-align: center;
-            min-width: 72px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
         }
 
+        /* Bouton Photo - Cercle moderne (style caméra native) */
         .camera-btn {
-            width: 72px;
-            height: 72px;
+            width: 68px;
+            height: 68px;
             border-radius: 50%;
-            border: 3px solid var(--white);
-            background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+            border: none;
+            background: transparent;
             color: var(--white);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.8em;
             transition: var(--transition);
-            box-shadow: var(--shadow-lg);
             flex-shrink: 0;
+            position: relative;
+            padding: 0;
         }
 
-        .camera-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 20px 40px rgba(193, 102, 107, 0.4);
+        /* Anneau extérieur du bouton photo */
+        .camera-btn.photo-btn {
+            border: 4px solid var(--white);
+            background: transparent;
+        }
+
+        .camera-btn.photo-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: var(--white);
+            transition: var(--transition);
+        }
+
+        .camera-btn.photo-btn i {
+            display: none;
+        }
+
+        .camera-btn.photo-btn:active::after {
+            width: 44px;
+            height: 44px;
+            background: var(--primary-light);
+        }
+
+        /* Bouton Vidéo - Cercle rouge moderne */
+        .camera-btn.video-btn {
+            width: 68px;
+            height: 68px;
+            border: 4px solid var(--white);
+            background: transparent;
+        }
+
+        .camera-btn.video-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: #FF3B30;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .camera-btn.video-btn i {
+            display: none;
+        }
+
+        /* Animation quand la vidéo enregistre : cercle → carré */
+        .camera-btn.video-btn.recording::after {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: #FF3B30;
         }
 
         .camera-btn:active {
-            transform: scale(0.95);
+            transform: scale(0.92);
         }
 
+        /* Bouton secondaire (toggle caméra) - Icône flottante moderne */
         .camera-btn.secondary {
-            width: 56px;
-            height: 56px;
-            background: rgba(255, 255, 255, 0.2);
-            border-color: var(--white);
-            font-size: 1.3em;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.18);
             backdrop-filter: blur(10px);
+            font-size: 1.2em;
+            color: var(--white);
         }
 
-        .camera-btn.video-btn {
-            width: 72px;
-            height: 72px;
-            background: #FF0000;
-            border-color: var(--white);
-            font-size: 1.8em;
+        .camera-btn.secondary::after {
+            display: none;
         }
 
-        .camera-btn.video-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 20px 40px rgba(255, 0, 0, 0.4);
+        .camera-btn.secondary:active {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(0.92) rotate(180deg);
         }
+
 
         .video-timer {
             position: absolute;
@@ -990,21 +1055,20 @@
                     <video id="video" autoplay playsinline muted></video>
                     <div id="videoTimer" class="video-timer" style="display: none;">00:00</div>
                     <div class="camera-overlay">
-                        <button class="camera-btn secondary" id="toggleCameraBtn" type="button" title="Changer de caméra" onclick="toggleCamera()">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                        <div class="camera-button-group">
+                        <div class="camera-controls-bar">
                             <div class="camera-button-wrapper">
-                                <button class="camera-btn" id="captureBtn" type="button" onclick="capturePhoto()" title="Prendre une photo">
-                                    <i class="fas fa-circle"></i>
-                                </button>
+                                <button class="camera-btn photo-btn" id="captureBtn" type="button" onclick="capturePhoto()" title="Prendre une photo"></button>
                                 <div class="camera-button-label">Photo</div>
                             </div>
                             <div class="camera-button-wrapper">
-                                <button class="camera-btn video-btn" id="recordVideoBtn" type="button" onclick="toggleVideoRecording()" title="Enregistrer une vidéo">
-                                    <i class="fas fa-circle"></i>
-                                </button>
+                                <button class="camera-btn video-btn" id="recordVideoBtn" type="button" onclick="toggleVideoRecording()" title="Enregistrer une vidéo"></button>
                                 <div class="camera-button-label">Vidéo</div>
+                            </div>
+                            <div class="camera-button-wrapper">
+                                <button class="camera-btn secondary" id="toggleCameraBtn" type="button" title="Changer de caméra" onclick="toggleCamera()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <div class="camera-button-label">Retourner</div>
                             </div>
                         </div>
                     </div>
@@ -1203,30 +1267,54 @@
 
         async function initializeCamera() {
             try {
+                // Arrêter le stream existant avant d'en démarrer un nouveau
+                if (state.stream) {
+                    state.stream.getTracks().forEach(track => track.stop());
+                    state.stream = null;
+                }
+
                 try {
+                    // Tentative avec facingMode exact (force la caméra sur mobile)
                     state.stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: state.facingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
+                        video: {
+                            facingMode: { exact: state.facingMode },
+                            width: { ideal: 1280 },
+                            height: { ideal: 960 }
+                        },
                         audio: false
                     });
-                } catch (err) {
-                    state.stream = await navigator.mediaDevices.getUserMedia({
-                        video: true,
-                        audio: false
-                    });
+                } catch (errExact) {
+                    try {
+                        // Fallback avec facingMode idéal (moins strict)
+                        state.stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: state.facingMode,
+                                width: { ideal: 1280 },
+                                height: { ideal: 960 }
+                            },
+                            audio: false
+                        });
+                    } catch (errIdeal) {
+                        // Dernier fallback : n'importe quelle caméra
+                        state.stream = await navigator.mediaDevices.getUserMedia({
+                            video: true,
+                            audio: false
+                        });
+                    }
                 }
                 dom.video.srcObject = state.stream;
+                await dom.video.play().catch(() => {});
             } catch (error) {
                 showToast('❌ Erreur d\'accès à la caméra');
             }
         }
 
         async function toggleCamera() {
-            if (state.stream) {
-                state.stream.getTracks().forEach(track => track.stop());
-            }
             state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
+            showToast(state.facingMode === 'user' ? '🤳 Caméra avant' : '📷 Caméra arrière');
             await initializeCamera();
         }
+
 
         function capturePhoto() {
             try {
