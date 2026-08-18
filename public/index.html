@@ -1059,6 +1059,12 @@
                     <div class="camera-overlay">
                         <div class="camera-controls-bar">
                             <div class="camera-button-wrapper">
+                                <button class="camera-btn secondary" id="importPhotoBtn" type="button" title="Importer depuis la galerie" onclick="document.getElementById('importPhotoInput').click()">
+                                    <i class="fas fa-images"></i>
+                                </button>
+                                <div class="camera-button-label">Importer</div>
+                            </div>
+                            <div class="camera-button-wrapper">
                                 <button class="camera-btn video-btn" id="recordVideoBtn" type="button" onclick="toggleVideoRecording()" title="Enregistrer une vidéo"></button>
                                 <div class="camera-button-label">Vidéo</div>
                             </div>
@@ -1072,13 +1078,8 @@
                                 </button>
                                 <div class="camera-button-label">Retourner</div>
                             </div>
-                            <div class="camera-button-wrapper">
-                                <button class="camera-btn secondary" id="importPhotoBtn" type="button" title="Importer depuis la galerie" onclick="document.getElementById('importPhotoInput').click()">
-                                    <i class="fas fa-images"></i>
-                                </button>
-                                <div class="camera-button-label">Importer</div>
-                            </div>
                         </div>
+
                     </div>
                 </div>
                 <input type="file" id="importPhotoInput" accept="image/*" multiple style="display: none;">
