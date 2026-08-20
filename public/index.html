@@ -1200,6 +1200,10 @@
                 <img id="modalImage" src="" alt="Photo" style="max-width: 100%; max-height: 80vh; border-radius: 16px; display: none;">
                 <video id="modalVideo" controls playsinline style="max-width: 100%; max-height: 80vh; border-radius: 16px; display: none;"></video>
                 <div id="modalAuthor" style="margin-top: var(--spacing-md); padding: var(--spacing-sm) var(--spacing-lg); background: rgba(0,0,0,0.6); color: var(--white); border-radius: 24px; font-weight: 600; font-size: 1em; backdrop-filter: blur(10px);"></div>
+                <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-md);">
+                    <button class="btn btn-secondary" id="modalDownloadBtn">⬇️ Télécharger</button>
+                    <button class="btn btn-danger" id="modalDeleteBtn">🗑️ Supprimer</button>
+                </div>
                 <button id="closeImageBtn" style="position: absolute; top: -12px; right: -12px; width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: white; border: none; cursor: pointer; font-size: 1.2em; box-shadow: var(--shadow-lg);">✕</button>
             </div>
         </div>
@@ -1725,8 +1729,10 @@
                 allMedia.forEach(media => {
                     const item = document.createElement('div');
                     item.className = 'gallery-item';
+                    item.dataset.fileId = media.fileId;
 
                     const isVideo = media.metadata.type === 'video';
+
                     const mediaTag = isVideo ? 
                         `<video style="width:100%; height:100%; object-fit:cover;"><source src="${media.url}" type="video/webm"></video>` :
                         `<img src="${media.url}" alt="Photo" style="width:100%; height:100%; object-fit:cover;">`;
@@ -1745,7 +1751,7 @@
                     // On écoute le clic sur la vignette entière : ainsi l'overlay (qui recouvre toute
                     // la vignette) ne bloque plus l'ouverture. Les boutons ⬇️/🗑️ stoppent la propagation.
                     item.addEventListener('click', () => {
-                        openMediaModal(media.url, isVideo, author);
+                        openMediaModal(media.url, isVideo, author, media.fileId);
                     });
 
                     dom.gallery.appendChild(item);
@@ -1765,8 +1771,13 @@
                 const response = await fetch(`/api/files/${fileId}?password=2024`, { method: 'DELETE' });
 
                 if (response.ok) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    window.location.reload();
+                    // Retirer immédiatement l'élément du DOM (pas de rechargement de page).
+                    removeMediaFromDom(fileId);
+                    // Fermer le modal s'il affichait ce média
+                    if (dom.imageModal.classList.contains('active') && state.currentModalFileId === fileId) {
+                        closeMediaModal();
+                    }
+                    showToast('✅ Supprimé');
                 } else {
                     showToast('❌ Erreur de suppression');
                 }
@@ -1774,6 +1785,29 @@
                 showToast('❌ Erreur');
             }
         }
+
+        // Retire du DOM la vignette galerie ET la carte message correspondant au fileId.
+        // Affiche l'état vide si plus aucun élément n'est présent.
+        function removeMediaFromDom(fileId) {
+            // Vignette galerie (on l'a stockée via data-file-id)
+            const galleryItem = dom.gallery.querySelector(`.gallery-item[data-file-id="${fileId}"]`);
+            if (galleryItem) {
+                galleryItem.remove();
+                if (!dom.gallery.querySelector('.gallery-item')) {
+                    dom.gallery.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">🖼️</div><div class="empty-text">Aucune photo</div></div>';
+                }
+            }
+
+            // Carte message (data-file-id)
+            const msgCard = dom.messagesList.querySelector(`.message-card[data-file-id="${fileId}"]`);
+            if (msgCard) {
+                msgCard.remove();
+                if (!dom.messagesList.querySelector('.message-card')) {
+                    dom.messagesList.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">Aucun message</div></div>';
+                }
+            }
+        }
+
 
         function downloadMedia(fileId, url) {
             const link = document.createElement('a');
@@ -1837,6 +1871,7 @@
 
                     const card = document.createElement('div');
                     card.className = 'message-card';
+                    card.dataset.fileId = msg.fileId;
 
                     const date = new Date(msg.metadata.uploadedAt).toLocaleDateString('fr-FR');
                     const audioUrl = `/audio/${msg.fileId}`;
@@ -2038,7 +2073,8 @@
 
 
         // Ouvre le média (photo ou vidéo) en grand + affiche le nom/prénom de l'auteur.
-        function openMediaModal(mediaSrc, isVideo, author) {
+        // On mémorise le fileId + l'url courants pour les boutons Télécharger / Supprimer du modal.
+        function openMediaModal(mediaSrc, isVideo, author, fileId) {
             if (isVideo) {
                 dom.modalImage.style.display = 'none';
                 dom.modalImage.src = '';
@@ -2051,9 +2087,12 @@
                 dom.modalImage.src = mediaSrc;
                 dom.modalImage.style.display = 'block';
             }
+            state.currentModalFileId = fileId || null;
+            state.currentModalUrl = mediaSrc;
             dom.modalAuthor.textContent = `👤 ${author || 'Invité anonyme'}`;
             dom.imageModal.classList.add('active');
         }
+
 
         // Compatibilité : ancien nom conservé au cas où (photo uniquement).
         function openImageModal(imageSrc, author) {
@@ -2070,6 +2109,15 @@
         dom.closeImageBtn.addEventListener('click', closeMediaModal);
         dom.imageModal.addEventListener('click', (e) => {
             if (e.target === dom.imageModal) closeMediaModal();
+        });
+
+        // Boutons Télécharger / Supprimer affichés dans le média en grand.
+        // Ils agissent sur le média actuellement ouvert (mémorisé dans state).
+        document.getElementById('modalDownloadBtn').addEventListener('click', () => {
+            if (state.currentModalFileId) downloadMedia(state.currentModalFileId, state.currentModalUrl);
+        });
+        document.getElementById('modalDeleteBtn').addEventListener('click', () => {
+            if (state.currentModalFileId) deleteMedia(state.currentModalFileId);
         });
 
 
