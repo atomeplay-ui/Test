@@ -1740,7 +1740,7 @@
                     item.innerHTML = `${mediaTag}
                         <div class="gallery-item-overlay">
                             <button class="gallery-action-btn" onclick="event.stopPropagation(); downloadMedia('${media.fileId}', '${media.url}')">⬇️</button>
-                            <button class="gallery-action-btn delete" onclick="event.stopPropagation(); deleteMedia('${media.fileId}')">🗑️</button>
+                            <button class="gallery-action-btn delete" onclick="event.stopPropagation(); deleteMedia('${media.fileId}', this)">🗑️</button>
                         </div>`;
 
 
@@ -1763,16 +1763,34 @@
             }
         }
 
-        async function deleteMedia(fileId) {
+        // Supprime un média. `srcEl` (optionnel) = l'élément déclencheur (bouton) :
+        // on remonte jusqu'à la vignette/carte pour la retirer directement du DOM,
+        // ce qui est plus fiable qu'un matching par fileId.
+        async function deleteMedia(fileId, srcEl) {
             if (!confirm('Confirmer la suppression?')) return;
+
+            // Repérer l'élément visuel AVANT l'appel réseau (le bouton existe encore).
+            let card = null;
+            if (srcEl && srcEl.closest) {
+                card = srcEl.closest('.gallery-item') || srcEl.closest('.message-card');
+            }
 
             try {
                 showToast('✅ Suppression...');
                 const response = await fetch(`/api/files/${fileId}?password=2024`, { method: 'DELETE' });
 
                 if (response.ok) {
-                    // Retirer immédiatement l'élément du DOM (pas de rechargement de page).
+                    // 1) Retirer l'élément déclencheur direct (si connu)
+                    if (card && card.parentNode) card.remove();
+                    // 2) Filet de sécurité : retirer aussi par fileId (vignette + carte message)
                     removeMediaFromDom(fileId);
+                    // 3) Restaurer l'état vide si besoin
+                    if (!dom.gallery.querySelector('.gallery-item')) {
+                        dom.gallery.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">🖼️</div><div class="empty-text">Aucune photo</div></div>';
+                    }
+                    if (!dom.messagesList.querySelector('.message-card')) {
+                        dom.messagesList.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">Aucun message</div></div>';
+                    }
                     // Fermer le modal s'il affichait ce média
                     if (dom.imageModal.classList.contains('active') && state.currentModalFileId === fileId) {
                         closeMediaModal();
@@ -1788,23 +1806,27 @@
 
         // Retire du DOM la vignette galerie ET la carte message correspondant au fileId.
         // Affiche l'état vide si plus aucun élément n'est présent.
+        // NB : on compare le dataset via JS (et non via un sélecteur CSS d'attribut) car
+        // certains fileId peuvent contenir des caractères spéciaux qui cassent le sélecteur.
         function removeMediaFromDom(fileId) {
-            // Vignette galerie (on l'a stockée via data-file-id)
-            const galleryItem = dom.gallery.querySelector(`.gallery-item[data-file-id="${fileId}"]`);
-            if (galleryItem) {
-                galleryItem.remove();
-                if (!dom.gallery.querySelector('.gallery-item')) {
-                    dom.gallery.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">🖼️</div><div class="empty-text">Aucune photo</div></div>';
-                }
+            const target = String(fileId);
+
+            // Vignette galerie
+            const galleryItems = dom.gallery.querySelectorAll('.gallery-item');
+            galleryItems.forEach(item => {
+                if (item.dataset.fileId === target) item.remove();
+            });
+            if (!dom.gallery.querySelector('.gallery-item')) {
+                dom.gallery.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">🖼️</div><div class="empty-text">Aucune photo</div></div>';
             }
 
-            // Carte message (data-file-id)
-            const msgCard = dom.messagesList.querySelector(`.message-card[data-file-id="${fileId}"]`);
-            if (msgCard) {
-                msgCard.remove();
-                if (!dom.messagesList.querySelector('.message-card')) {
-                    dom.messagesList.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">Aucun message</div></div>';
-                }
+            // Carte message
+            const msgCards = dom.messagesList.querySelectorAll('.message-card');
+            msgCards.forEach(card => {
+                if (card.dataset.fileId === target) card.remove();
+            });
+            if (!dom.messagesList.querySelector('.message-card')) {
+                dom.messagesList.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">Aucun message</div></div>';
             }
         }
 
@@ -1892,7 +1914,7 @@
                         ${messageText ? `<div class="message-text">"${messageText}"</div>` : ''}
                         <div class="message-actions">
                             <button class="message-action-btn" onclick="downloadMedia('${msg.fileId}', '${audioUrl}')">⬇️ Télécharger</button>
-                            <button class="message-action-btn delete" onclick="deleteMedia('${msg.fileId}')">🗑️ Supprimer</button>
+                            <button class="message-action-btn delete" onclick="deleteMedia('${msg.fileId}', this)">🗑️ Supprimer</button>
                         </div>
                     `;
                     container.appendChild(card);
