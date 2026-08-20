@@ -1139,7 +1139,9 @@
                     <button class="filter-btn active" id="filterAll" onclick="filterGallery('all')">Tous</button>
                     <button class="filter-btn" id="filterPhotos" onclick="filterGallery('photo')">📸 Photos</button>
                     <button class="filter-btn" id="filterVideos" onclick="filterGallery('video')">🎬 Vidéos</button>
+                    <button class="filter-btn" id="galleryLockBtn" onclick="toggleGalleryLock()" title="Voir toutes les photos">🔒 Tout voir</button>
                 </div>
+
                 <div class="gallery-grid" id="gallery">
                     <div class="empty-state" style="grid-column: 1/-1;">
                         <div class="empty-icon">🖼️</div>
@@ -1150,7 +1152,11 @@
 
             <!-- MESSAGES SCREEN -->
             <div class="screen screen-messages">
+                <div style="display: flex; justify-content: flex-end; margin-bottom: var(--spacing-sm);">
+                    <button class="filter-btn" id="messagesLockBtn" onclick="toggleMessagesLock()" title="Voir tous les messages">🔒 Tout voir</button>
+                </div>
                 <div class="messages-container" id="messagesList">
+
                     <div class="empty-state">
                         <div class="empty-icon">💬</div>
                         <div class="empty-text">Aucun message</div>
@@ -1258,8 +1264,13 @@
             videoChunks: [],
             videoSeconds: 0,
             videoDevices: [],
-            currentDeviceIndex: 0
+            currentDeviceIndex: 0,
+            // Par défaut on ne montre QUE le contenu de l'utilisateur courant.
+            // Passe à true après déverrouillage par mot de passe (bouton cadenas).
+            showAllMedia: false,
+            showAllMessages: false
         };
+
 
 
         const dom = {
@@ -1683,18 +1694,33 @@
                 const videoResponse = await fetch('/api/files?type=video');
                 const videosData = await videoResponse.json();
 
-                const allMedia = [];
+                let allMedia = [];
                 if (photosData.files) allMedia.push(...photosData.files);
                 if (videosData.files) allMedia.push(...videosData.files);
+
+                // Filtrage par utilisateur : par défaut on ne montre que le contenu
+                // de l'invité courant (comparaison prénom+nom, insensible à la casse).
+                // Après déverrouillage (bouton cadenas), state.showAllMedia = true -> tout.
+                const me = getUserIdentity().trim().toLowerCase();
+                if (!state.showAllMedia && me) {
+                    allMedia = allMedia.filter(m => {
+                        const a = (m.metadata && m.metadata.author ? m.metadata.author : '').trim().toLowerCase();
+                        return a === me;
+                    });
+                }
 
                 allMedia.sort((a, b) => new Date(b.metadata.uploadedAt) - new Date(a.metadata.uploadedAt));
 
                 dom.gallery.innerHTML = '';
 
                 if (allMedia.length === 0) {
-                    dom.gallery.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">🖼️</div><div class="empty-text">Aucune photo</div></div>';
+                    const emptyMsg = (!state.showAllMedia && me)
+                        ? 'Vous n\'avez encore partagé aucune photo.<br>Cliquez sur 🔒 pour voir toutes les photos.'
+                        : 'Aucune photo';
+                    dom.gallery.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">🖼️</div><div class="empty-text">${emptyMsg}</div></div>`;
                     return;
                 }
+
 
                 allMedia.forEach(media => {
                     const item = document.createElement('div');
@@ -1780,17 +1806,35 @@
 
                 dom.messagesList.innerHTML = '';
 
-                if (!audioData.files || audioData.files.length === 0) {
-                    dom.messagesList.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">Aucun message</div></div>';
+                let files = (audioData.files || []).slice();
+
+                // Filtrage par utilisateur : par défaut on ne montre que les messages
+                // de l'invité courant (comparaison prénom+nom, insensible à la casse).
+                // Après déverrouillage (bouton cadenas), state.showAllMessages = true -> tout.
+                const me = getUserIdentity().trim().toLowerCase();
+                if (!state.showAllMessages && me) {
+                    files = files.filter(m => {
+                        const a = (m.metadata && m.metadata.author ? m.metadata.author : '').trim().toLowerCase();
+                        return a === me;
+                    });
+                }
+
+                if (files.length === 0) {
+                    const emptyMsg = (!state.showAllMessages && me)
+                        ? 'Vous n\'avez encore laissé aucun message.<br>Cliquez sur 🔒 pour voir tous les messages.'
+                        : 'Aucun message';
+                    dom.messagesList.innerHTML = `<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">${emptyMsg}</div></div>`;
                     return;
                 }
 
-                audioData.files.sort((a, b) => new Date(b.metadata.uploadedAt) - new Date(a.metadata.uploadedAt));
+                files.sort((a, b) => new Date(b.metadata.uploadedAt) - new Date(a.metadata.uploadedAt));
 
                 const container = document.createElement('div');
                 container.className = 'messages-container';
 
-                audioData.files.forEach(msg => {
+                files.forEach(msg => {
+
+
                     const card = document.createElement('div');
                     card.className = 'message-card';
 
@@ -1853,15 +1897,24 @@
             item.addEventListener('click', async () => {
                 const screen = item.dataset.screen;
 
-                if (screen === 'gallery' || screen === 'messages') {
-                    dom.passwordModal.classList.add('active');
-                    dom.passwordInput.focus();
-                    dom.passwordInput.dataset.targetScreen = screen;
-                } else {
-                    showMenuScreen(screen);
+                // Plus de mot de passe à l'entrée : on affiche directement l'écran.
+                // Par défaut la galerie/les messages ne montrent QUE le contenu de
+                // l'utilisateur courant (filtré par son prénom + nom).
+                showMenuScreen(screen);
+
+                if (screen === 'gallery') {
+                    state.showAllMedia = false;
+                    updateGalleryLockBtn();
+                    await loadGallery();
+                } else if (screen === 'messages') {
+                    state.showAllMessages = false;
+                    updateMessagesLockBtn();
+                    loadMessages();
                 }
+
             });
         });
+
 
         function showMenuScreen(screen) {
             dom.menuItems.forEach(m => m.classList.remove('active'));
@@ -1871,23 +1924,82 @@
             state.currentScreen = screen;
         }
 
+        // ===== VERROUILLAGE / DÉVERROUILLAGE (bouton cadenas) =====
+        // Par défaut : chaque invité ne voit QUE ses propres photos / messages.
+        // Cliquer sur le cadenas 🔒 demande le mot de passe pour TOUT voir.
+        // Une fois déverrouillé, le bouton devient 🔓 et un nouveau clic revient
+        // à l'affichage « mes contenus uniquement ».
+
+        // Met à jour le libellé du bouton cadenas de la galerie.
+        function updateGalleryLockBtn() {
+            const btn = document.getElementById('galleryLockBtn');
+            if (!btn) return;
+            btn.textContent = state.showAllMedia ? '🔓 Mes photos' : '🔒 Tout voir';
+            btn.classList.toggle('active', state.showAllMedia);
+        }
+
+        // Met à jour le libellé du bouton cadenas des messages.
+        function updateMessagesLockBtn() {
+            const btn = document.getElementById('messagesLockBtn');
+            if (!btn) return;
+            btn.textContent = state.showAllMessages ? '🔓 Mes messages' : '🔒 Tout voir';
+            btn.classList.toggle('active', state.showAllMessages);
+        }
+
+        // Clic sur le cadenas de la galerie.
+        function toggleGalleryLock() {
+            if (state.showAllMedia) {
+                // Déjà déverrouillé -> revenir à « mes photos uniquement ».
+                state.showAllMedia = false;
+                updateGalleryLockBtn();
+                loadGallery();
+            } else {
+                // Demander le mot de passe pour tout voir.
+                dom.passwordInput.dataset.unlockTarget = 'gallery';
+                dom.passwordInput.value = '';
+                dom.passwordModal.classList.add('active');
+                setTimeout(() => dom.passwordInput.focus(), 100);
+            }
+        }
+
+        // Clic sur le cadenas des messages.
+        function toggleMessagesLock() {
+            if (state.showAllMessages) {
+                state.showAllMessages = false;
+                updateMessagesLockBtn();
+                loadMessages();
+            } else {
+                dom.passwordInput.dataset.unlockTarget = 'messages';
+                dom.passwordInput.value = '';
+                dom.passwordModal.classList.add('active');
+                setTimeout(() => dom.passwordInput.focus(), 100);
+            }
+        }
+
         dom.confirmPasswordBtn.addEventListener('click', async () => {
             if (dom.passwordInput.value === PASSWORD) {
-                const targetScreen = dom.passwordInput.dataset.targetScreen;
+                const unlockTarget = dom.passwordInput.dataset.unlockTarget;
                 dom.passwordModal.classList.remove('active');
                 dom.passwordInput.value = '';
-                showMenuScreen(targetScreen);
 
-                if (targetScreen === 'gallery') {
+                if (unlockTarget === 'gallery') {
+                    state.showAllMedia = true;
+                    updateGalleryLockBtn();
                     await loadGallery();
-                } else if (targetScreen === 'messages') {
+                    showToast('🔓 Toutes les photos sont affichées');
+                } else if (unlockTarget === 'messages') {
+                    state.showAllMessages = true;
+                    updateMessagesLockBtn();
                     loadMessages();
+                    showToast('🔓 Tous les messages sont affichés');
                 }
+                delete dom.passwordInput.dataset.unlockTarget;
             } else {
                 showToast('❌ Mot de passe incorrect');
                 dom.passwordInput.value = '';
             }
         });
+
 
         dom.cancelPasswordBtn.addEventListener('click', () => {
             dom.passwordModal.classList.remove('active');
