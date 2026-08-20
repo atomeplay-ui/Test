@@ -384,8 +384,9 @@ app.get('/api/files', async (req, res) => {
       // Traiter les fichiers rapidement avec les métadonnées chargées
       const filesList = [];
       for (const file of files) {
+        let fileId = null;
         try {
-          const fileId = file.name.split('/').pop();
+          fileId = file.name.split('/').pop();
           
           const [url] = await file.getSignedUrl({
             version: 'v4',
@@ -393,12 +394,40 @@ app.get('/api/files', async (req, res) => {
             expires: Date.now() + (7 * 24 * 60 * 60 * 1000)
           });
 
-          // Utiliser les métadonnées locales
-          let metadata = allMetadata[fileId] || { 
-            fileId, 
-            uploadedAt: new Date().toISOString(),
-            type: fileType || 'unknown'
-          };
+          // 1) Priorité aux métadonnées locales (dispo en dev)
+          let metadata = allMetadata[fileId];
+
+          // 2) Sur Vercel, les JSON locaux n'existent pas : lire les métadonnées
+          //    personnalisées stockées DANS le fichier Firebase Storage lors de l'upload.
+          if (!metadata || !metadata.author) {
+            try {
+              const [fbMeta] = await file.getMetadata();
+              const custom = (fbMeta && fbMeta.metadata) ? fbMeta.metadata : {};
+              metadata = {
+                fileId,
+                uploadedAt: custom.uploadedAt || (fbMeta && fbMeta.timeCreated) || new Date().toISOString(),
+                type: custom.type || fileType || 'unknown',
+                filename: custom.filename,
+                size: custom.size,
+                mimeType: custom.mimeType || (fbMeta && fbMeta.contentType),
+                // Fusionner en préservant l'auteur/message trouvés (local OU Firebase)
+                ...(metadata || {}),
+                author: (metadata && metadata.author) || custom.author,
+                message: (metadata && metadata.message) || custom.message
+              };
+            } catch (metaErr) {
+              console.warn(`⚠️ Impossible de lire les métadonnées Firebase de ${fileId}:`, metaErr.message);
+            }
+          }
+
+          // 3) Fallback ultime
+          if (!metadata) {
+            metadata = {
+              fileId,
+              uploadedAt: new Date().toISOString(),
+              type: fileType || 'unknown'
+            };
+          }
 
           filesList.push({
             fileId,
@@ -409,6 +438,7 @@ app.get('/api/files', async (req, res) => {
           console.error('⚠️ Erreur fichier:', fileId, e.message);
         }
       }
+
 
       return res.json({
         success: true,
