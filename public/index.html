@@ -1707,23 +1707,23 @@
 
                     item.innerHTML = `${mediaTag}
                         <div class="gallery-item-overlay">
-                            <button class="gallery-action-btn" onclick="downloadMedia('${media.fileId}', '${media.url}')">⬇️</button>
-                            <button class="gallery-action-btn delete" onclick="deleteMedia('${media.fileId}')">🗑️</button>
+                            <button class="gallery-action-btn" onclick="event.stopPropagation(); downloadMedia('${media.fileId}', '${media.url}')">⬇️</button>
+                            <button class="gallery-action-btn delete" onclick="event.stopPropagation(); deleteMedia('${media.fileId}')">🗑️</button>
                         </div>`;
+
 
                     // Auteur (prénom + nom) de la personne qui a pris la photo / vidéo
                     const author = (media.metadata && media.metadata.author) ? media.metadata.author : 'Invité anonyme';
 
-                    // Clic sur la photo OU la vidéo -> ouvre le média en grand + affiche l'auteur
-                    const mediaElement = item.querySelector(isVideo ? 'video' : 'img');
-                    if (mediaElement) {
-                        mediaElement.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            openMediaModal(media.url, isVideo, author);
-                        });
-                    }
+                    // Clic sur la vignette (photo OU vidéo) -> ouvre le média en grand + affiche l'auteur.
+                    // On écoute le clic sur la vignette entière : ainsi l'overlay (qui recouvre toute
+                    // la vignette) ne bloque plus l'ouverture. Les boutons ⬇️/🗑️ stoppent la propagation.
+                    item.addEventListener('click', () => {
+                        openMediaModal(media.url, isVideo, author);
+                    });
 
                     dom.gallery.appendChild(item);
+
 
                 });
             } catch (error) {
