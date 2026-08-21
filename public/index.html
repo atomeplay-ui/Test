@@ -2727,6 +2727,78 @@
         });
 
 
+        // ===== CLASSEMENT (LEADERBOARD) =====
+        async function loadLeaderboard() {
+            const podiumEl = document.getElementById('leaderboardPodium');
+            const listEl = document.getElementById('leaderboardList');
+
+            podiumEl.innerHTML = '';
+            listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🏅</div><div class="empty-text">Chargement du classement...</div></div>';
+
+            try {
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+
+                if (!data.success || !Array.isArray(data.leaderboard)) {
+                    throw new Error('Réponse invalide');
+                }
+
+                const leaderboard = data.leaderboard;
+                const myGuestKey = getGuestKey();
+
+                if (leaderboard.length === 0) {
+                    podiumEl.innerHTML = '';
+                    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🏅</div><div class="empty-text">Aucun invité pour le moment</div></div>';
+                    return;
+                }
+
+                const top3 = leaderboard.slice(0, 3);
+                const order = [1, 0, 2];
+                podiumEl.innerHTML = '';
+                order.forEach(idx => {
+                    const entry = top3[idx];
+                    if (!entry) return;
+                    const rank = idx + 1;
+                    const initials = ((entry.firstName || '?')[0] || '?').toUpperCase();
+                    const slot = document.createElement('div');
+                    slot.className = `podium-slot rank-${rank}`;
+                    slot.innerHTML = `
+                        <div class="podium-avatar">${initials}</div>
+                        <div class="podium-name">${entry.firstName || ''} ${entry.lastName || ''}</div>
+                        <div class="podium-score">${entry.total} pts</div>
+                        <div class="podium-bar">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</div>
+                    `;
+                    podiumEl.appendChild(slot);
+                });
+
+                listEl.innerHTML = '';
+                leaderboard.forEach(entry => {
+                    const isMe = myGuestKey && entry.guestKey === myGuestKey;
+                    const row = document.createElement('div');
+                    row.className = 'leaderboard-row' + (isMe ? ' me' : '');
+                    const rankClass = entry.rank === 1 ? 'top1' : entry.rank === 2 ? 'top2' : entry.rank === 3 ? 'top3' : '';
+                    const details = [];
+                    if (entry.mediaCount) details.push(`📸 ${entry.mediaCount}`);
+                    if (entry.challengesCount) details.push(`🏆 ${entry.challengesCount}`);
+                    if (entry.souvenirsCount) details.push(`🗺️ ${entry.souvenirsCount}`);
+                    if (entry.allChallengesDone) details.push('🎉 Tous les défis !');
+
+                    row.innerHTML = `
+                        <div class="leaderboard-rank ${rankClass}">#${entry.rank}</div>
+                        <div class="leaderboard-info">
+                            <div class="leaderboard-guest-name">${entry.firstName || ''} ${entry.lastName || ''}${isMe ? ' (Vous)' : ''}</div>
+                            <div class="leaderboard-guest-detail">${details.join(' · ') || 'Aucune activité'}</div>
+                        </div>
+                        <div class="leaderboard-total">${entry.total} pts</div>
+                    `;
+                    listEl.appendChild(row);
+                });
+            } catch (error) {
+                podiumEl.innerHTML = '';
+                listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Erreur de chargement du classement</div></div>';
+            }
+        }
+
         // ===== CHASSE AUX SOUVENIRS : logique =====
         const SOUVENIRS_KEY = 'weddingSouvenirsFound';
 
