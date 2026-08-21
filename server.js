@@ -97,9 +97,232 @@ const upload = multer({
   limits: { fileSize: 100 * 1024 * 1024 } // 100MB max
 });
 
+// ===== GESTION DES INVITÉS (Firebase Realtime Database) =====
+// Un invité est identifié de façon STABLE par une clé dérivée de son prénom+nom
+// (normalisée : minuscules, sans accents/espaces). Cela permet de retrouver ses
+// données (défis validés, souvenirs trouvés, photos liées) sur n'importe quel
+// appareil simplement en retapant son nom - pas de mot de passe, pas de compte.
+// Repli sur un fichier JSON local si la Realtime Database n'est pas configurée
+// (utile en développement).
+
+function slugifyName(str) {
+  return (str || '')
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // retire les accents
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function computeGuestKey(firstName, lastName) {
+  const key = `${slugifyName(firstName)}_${slugifyName(lastName)}`.replace(/^_+|_+$/g, '');
+  return key || null;
+}
+
+const GUESTS_FILE = path.join('data', 'guests.json');
+
+function readLocalGuests() {
+  try {
+    if (!fs.existsSync(GUESTS_FILE)) return {};
+    return JSON.parse(fs.readFileSync(GUESTS_FILE, 'utf8'));
+  } catch (e) {
+    return {};
+  }
+}
+
+function writeLocalGuests(all) {
+  try {
+    if (!fs.existsSync('data')) fs.mkdirSync('data');
+    fs.writeFileSync(GUESTS_FILE, JSON.stringify(all, null, 2));
+  } catch (e) {
+    console.warn('⚠️ Erreur sauvegarde locale des invités:', e.message);
+  }
+}
+
+// Extrait l'id de défi contenu dans un message au format [DEFI:<id>], ou null.
+function extractChallengeId(message) {
+  const m = /\[DEFI:([a-zA-Z0-9_-]+)\]/.exec(message || '');
+  return m ? m[1] : null;
+}
+
+// Marque un défi comme validé pour un invité donné (Firebase ou repli local).
+async function markChallengeValidated(guestKey, challengeId, fileId) {
+  if (!guestKey || !challengeId) return;
+  const entry = { fileId, validatedAt: new Date().toISOString() };
+  if (db) {
+    await db.ref(`guests/${guestKey}/challenges/${challengeId}`).set(entry);
+  } else {
+    const all = readLocalGuests();
+    if (!all[guestKey]) {
+      all[guestKey] = { firstName: '', lastName: '', createdAt: new Date().toISOString(), challenges: {}, souvenirs: {} };
+    }
+    all[guestKey].challenges = all[guestKey].challenges || {};
+    all[guestKey].challenges[challengeId] = entry;
+    writeLocalGuests(all);
+  }
+}
+
+// Lie un média (photo/vidéo/audio) à l'invité qui l'a envoyé (Firebase ou repli local).
+async function linkMediaToGuest(guestKey, fileId, fileType) {
+  if (!guestKey || !fileId) return;
+  const entry = { fileType, linkedAt: new Date().toISOString() };
+  if (db) {
+    await db.ref(`guests/${guestKey}/media/${fileId}`).set(entry);
+  } else {
+    const all = readLocalGuests();
+    if (!all[guestKey]) {
+      all[guestKey] = { firstName: '', lastName: '', createdAt: new Date().toISOString(), challenges: {}, souvenirs: {} };
+    }
+    all[guestKey].media = all[guestKey].media || {};
+    all[guestKey].media[fileId] = entry;
+    writeLocalGuests(all);
+  }
+}
+
 // ===== ROUTES API =====
 
+// 0A. LOGIN INVITÉ (par prénom + nom, sans mot de passe)
+// Crée l'invité s'il n'existe pas encore, sinon retourne ses données existantes
+// (défis validés, souvenirs trouvés, médias liés). Le front stocke le `guestKey`
+// retourné (ex: dans un cookie/localStorage) pour ne plus avoir à ressaisir son nom.
+app.post('/api/guest/login', async (req, res) => {
+  try {
+    const firstName = (req.body.firstName || '').trim();
+    const lastName = (req.body.lastName || '').trim();
+
+    if (!firstName || !lastName) {
+      return res.status(400).json({ error: 'Prénom et nom requis' });
+    }
+
+    const guestKey = computeGuestKey(firstName, lastName);
+    if (!guestKey) {
+      return res.status(400).json({ error: 'Nom invalide' });
+    }
+
+    let guest = null;
+
+    if (db) {
+      const ref = db.ref(`guests/${guestKey}`);
+      const snap = await ref.once('value');
+      guest = snap.val();
+
+      if (!guest) {
+        guest = {
+          firstName,
+          lastName,
+          createdAt: new Date().toISOString(),
+          challenges: {},
+          souvenirs: {},
+          media: {}
+        };
+        await ref.set(guest);
+      } else {
+        // Garder le prénom/nom à jour (au cas où l'orthographe/casse a légèrement changé)
+        await ref.update({ firstName, lastName });
+        guest.firstName = firstName;
+        guest.lastName = lastName;
+      }
+    } else {
+      // Repli local (développement sans Firebase DB)
+      const all = readLocalGuests();
+      guest = all[guestKey];
+      if (!guest) {
+        guest = {
+          firstName,
+          lastName,
+          createdAt: new Date().toISOString(),
+          challenges: {},
+          souvenirs: {},
+          media: {}
+        };
+        all[guestKey] = guest;
+      } else {
+        guest.firstName = firstName;
+        guest.lastName = lastName;
+      }
+      writeLocalGuests(all);
+    }
+
+    return res.json({
+      success: true,
+      guestKey,
+      guest: {
+        firstName: guest.firstName || firstName,
+        lastName: guest.lastName || lastName,
+        challenges: guest.challenges || {},
+        souvenirs: guest.souvenirs || {},
+        media: guest.media || {}
+      }
+    });
+  } catch (error) {
+    console.error('Erreur login invité:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 0B. RÉCUPÉRER LES DONNÉES D'UN INVITÉ (défis, souvenirs, médias)
+app.get('/api/guest/:guestKey', async (req, res) => {
+  try {
+    const guestKey = req.params.guestKey;
+    let guest = null;
+
+    if (db) {
+      const snap = await db.ref(`guests/${guestKey}`).once('value');
+      guest = snap.val();
+    } else {
+      const all = readLocalGuests();
+      guest = all[guestKey];
+    }
+
+    if (!guest) {
+      return res.status(404).json({ error: 'Invité non trouvé' });
+    }
+
+    return res.json({
+      success: true,
+      guestKey,
+      guest: {
+        firstName: guest.firstName || '',
+        lastName: guest.lastName || '',
+        challenges: guest.challenges || {},
+        souvenirs: guest.souvenirs || {},
+        media: guest.media || {}
+      }
+    });
+  } catch (error) {
+    console.error('Erreur récupération invité:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 0C. MARQUER UN SOUVENIR COMME TROUVÉ (chasse aux souvenirs, scan QR code)
+app.post('/api/guest/:guestKey/souvenir/:souvenirId', async (req, res) => {
+  try {
+    const { guestKey, souvenirId } = req.params;
+    const entry = { foundAt: new Date().toISOString() };
+
+    if (db) {
+      await db.ref(`guests/${guestKey}/souvenirs/${souvenirId}`).set(entry);
+    } else {
+      const all = readLocalGuests();
+      if (!all[guestKey]) {
+        all[guestKey] = { firstName: '', lastName: '', createdAt: new Date().toISOString(), challenges: {}, souvenirs: {}, media: {} };
+      }
+      all[guestKey].souvenirs = all[guestKey].souvenirs || {};
+      all[guestKey].souvenirs[souvenirId] = entry;
+      writeLocalGuests(all);
+    }
+
+    return res.json({ success: true, souvenirId, entry });
+  } catch (error) {
+    console.error('Erreur validation souvenir:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 1. UPLOAD FICHIER (Photo/Vidéo/Audio)
+
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
     console.log('\n📤 Upload reçu');
@@ -155,7 +378,13 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       console.log(`⚠️ Pas de message fourni`);
     }
 
+    // Clé de l'invité (fournie par le front, calculée à partir de son prénom+nom)
+    // -> permet de lier ce média à son profil et de valider un défi si présent.
+    const guestKey = (req.body.guestKey || '').trim() || null;
+    if (guestKey) metadata.guestKey = guestKey;
+
     // Si Firebase est disponible
+
     if (bucket) {
       try {
         const destination = `uploads/${fileType}/${fileId}`;
@@ -222,6 +451,20 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
           fs.unlinkSync(req.file.path);
         }
 
+        // Lier ce média à l'invité + valider un défi si le message en contient un
+        if (guestKey) {
+          try {
+            await linkMediaToGuest(guestKey, fileId, fileType);
+            const challengeId = extractChallengeId(metadata.message);
+            if (challengeId) {
+              await markChallengeValidated(guestKey, challengeId, fileId);
+              console.log(`🏆 Défi ${challengeId} validé pour ${guestKey}`);
+            }
+          } catch (guestErr) {
+            console.warn('⚠️ Erreur mise à jour invité (non bloquant):', guestErr.message);
+          }
+        }
+
         console.log(`✅ Upload réussi`);
         return res.json({
           success: true,
@@ -230,6 +473,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
           metadata
         });
       } catch (firebaseErr) {
+
         console.error('❌ Erreur Firebase:', firebaseErr.message);
         if (req.file && req.file.path && fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
@@ -250,6 +494,19 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         JSON.stringify(metadata)
       );
 
+      // Lier ce média à l'invité + valider un défi si le message en contient un
+      if (guestKey) {
+        try {
+          await linkMediaToGuest(guestKey, fileId, fileType);
+          const challengeId = extractChallengeId(metadata.message);
+          if (challengeId) {
+            await markChallengeValidated(guestKey, challengeId, fileId);
+          }
+        } catch (guestErr) {
+          console.warn('⚠️ Erreur mise à jour invité (non bloquant):', guestErr.message);
+        }
+      }
+
       return res.json({
         success: true,
         fileId,
@@ -257,6 +514,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         metadata,
         storage: 'local'
       });
+
     }
   } catch (error) {
     console.error('❌ Erreur upload complète:', error);
@@ -534,8 +792,10 @@ app.patch('/api/files/:fileId', async (req, res) => {
 
     const fileId = req.params.fileId;
     const newMessage = req.body.message;
+    const guestKey = (req.body.guestKey || '').trim() || null;
 
     if (bucket) {
+
       const [files] = await bucket.getFiles({ prefix: 'uploads/' });
       const file = files.find(f => f.name.includes(fileId));
       if (!file) {
@@ -575,6 +835,18 @@ app.patch('/api/files/:fileId', async (req, res) => {
           .catch(e => console.warn('⚠️ Firebase DB update non disponible:', e.message));
       }
 
+      // Lier ce média à l'invité + valider le défi correspondant, si fourni
+      if (guestKey) {
+        const fileTypeForGuest = custom.type || 'photo';
+        linkMediaToGuest(guestKey, fileId, fileTypeForGuest)
+          .catch(e => console.warn('⚠️ linkMediaToGuest non disponible:', e.message));
+        const challengeIdForGuest = extractChallengeId(custom.message);
+        if (challengeIdForGuest) {
+          markChallengeValidated(guestKey, challengeIdForGuest, fileId)
+            .catch(e => console.warn('⚠️ markChallengeValidated non disponible:', e.message));
+        }
+      }
+
       return res.json({ success: true, message: custom.message });
 
     } else {
@@ -591,6 +863,19 @@ app.patch('/api/files/:fileId', async (req, res) => {
           : (existing ? `${existing} ${newMessage}` : newMessage);
       }
       fs.writeFileSync(metadataPath, JSON.stringify(localMeta));
+
+      // Lier ce média à l'invité + valider le défi correspondant, si fourni
+      if (guestKey) {
+        const fileTypeForGuest = localMeta.type || 'photo';
+        linkMediaToGuest(guestKey, fileId, fileTypeForGuest)
+          .catch(e => console.warn('⚠️ linkMediaToGuest non disponible:', e.message));
+        const challengeIdForGuest = extractChallengeId(localMeta.message);
+        if (challengeIdForGuest) {
+          markChallengeValidated(guestKey, challengeIdForGuest, fileId)
+            .catch(e => console.warn('⚠️ markChallengeValidated non disponible:', e.message));
+        }
+      }
+
       return res.json({ success: true, message: localMeta.message, storage: 'local' });
     }
   } catch (error) {

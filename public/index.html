@@ -1773,8 +1773,41 @@
             localStorage.setItem(IDENTITY_KEY, JSON.stringify(data));
         }
 
+        // ===== CLÉ INVITÉ STABLE (synchronisation serveur multi-appareils) =====
+        const GUEST_KEY_KEY = 'weddingGuestKey';
+
+        function getGuestKey() {
+            return localStorage.getItem(GUEST_KEY_KEY) || '';
+        }
+
+        // Enregistre/rafraîchit l'invité côté serveur et récupère sa guestKey stable.
+        async function loginGuest(firstName, lastName) {
+            try {
+                const response = await fetch('/api/guest/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ firstName, lastName })
+                });
+                const result = await response.json();
+                if (result && result.success && result.guestKey) {
+                    localStorage.setItem(GUEST_KEY_KEY, result.guestKey);
+                    if (result.guest && result.guest.souvenirs) {
+                        const serverFound = Object.keys(result.guest.souvenirs);
+                        if (serverFound.length > 0) {
+                            const local = getFoundSouvenirs();
+                            serverFound.forEach(id => local.add(id));
+                            localStorage.setItem(SOUVENIRS_KEY, JSON.stringify(Array.from(local)));
+                        }
+                    }
+                }
+                return result;
+            } catch (e) {
+                return null;
+            }
+        }
+
         // Affiche le modal d'identité au démarrage si aucune identité n'est stockée.
-        function checkUserIdentity() {
+        async function checkUserIdentity() {
             const identity = getUserIdentity();
             if (!identity) {
                 dom.identityModal.classList.add('active');
@@ -1782,10 +1815,19 @@
             } else {
                 // Préremplir le champ auteur des messages audio
                 dom.audioAuthorInput.value = identity;
+                if (!getGuestKey()) {
+                    try {
+                        const raw = localStorage.getItem(IDENTITY_KEY);
+                        const data = raw ? JSON.parse(raw) : {};
+                        await loginGuest(data.firstName || '', data.lastName || '');
+                    } catch (e) {
+                        // mode hors-ligne : on continue sans guestKey
+                    }
+                }
             }
         }
 
-        function confirmIdentity() {
+        async function confirmIdentity() {
             const firstName = dom.identityFirstNameInput.value.trim();
             const lastName = dom.identityLastNameInput.value.trim();
 
@@ -1798,6 +1840,11 @@
             dom.identityModal.classList.remove('active');
             dom.audioAuthorInput.value = getUserIdentity();
             showToast(`💕 Bienvenue ${firstName} !`);
+            try {
+                await loginGuest(firstName, lastName);
+            } catch (e) {
+                // non bloquant
+            }
         }
 
         // ===== HAUTEUR RÉELLE DU VIEWPORT (fix iOS standalone) =====
@@ -1991,8 +2038,10 @@
             formData.append('file', blob, fileName || `photo-${Date.now()}.jpg`);
             formData.append('fileType', 'photo');
             formData.append('author', getUserIdentity());
+            formData.append('guestKey', getGuestKey());
 
             const uploadResponse = await fetch('/api/upload?password=2024', {
+
 
                 method: 'POST',
                 body: formData
@@ -2168,6 +2217,8 @@
                 // Si le champ auteur est vide, on utilise l'identité stockée (prénom + nom)
                 formData.append('author', (dom.audioAuthorInput.value && dom.audioAuthorInput.value.trim()) || getUserIdentity());
                 formData.append('message', dom.audioMessageInput.value || '');
+                formData.append('guestKey', getGuestKey());
+
 
 
                 const uploadResponse = await fetch('/api/upload?password=2024', {
@@ -2944,8 +2995,9 @@
                 const response = await fetch(`/api/files/${fileId}?password=2024`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: `[DEFI:${challengeId}]` }),
+                    body: JSON.stringify({ message: `[DEFI:${challengeId}]`, guestKey: getGuestKey() }),
                     signal: controller.signal
+
                 });
                 clearTimeout(timeoutId);
                 const result = await response.json();
@@ -2997,6 +3049,8 @@
                 formData.append('fileType', fileType);
                 formData.append('author', getUserIdentity());
                 formData.append('message', `[DEFI:${challengeId}]`);
+                formData.append('guestKey', getGuestKey());
+
 
                 const uploadResponse = await fetch('/api/upload?password=2024', {
                     method: 'POST',
@@ -3097,9 +3151,10 @@
                 formData.append('file', videoBlob, `video-${Date.now()}.webm`);
                 formData.append('fileType', 'video');
                 formData.append('author', getUserIdentity());
-
+                formData.append('guestKey', getGuestKey());
 
                 const uploadResponse = await fetch('/api/upload?password=2024', {
+
                     method: 'POST',
                     body: formData
                 });
