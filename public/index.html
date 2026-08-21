@@ -705,8 +705,145 @@
             color: var(--white);
         }
 
+        /* ===== CHALLENGES SCREEN (Défis photos) ===== */
+        .screen-challenges {
+            flex-direction: column;
+            padding: var(--spacing-lg);
+            padding-bottom: 120px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            gap: var(--spacing-lg);
+        }
+
+        .challenges-intro {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .challenges-title {
+            font-family: var(--font-display);
+            font-size: 1.6em;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .challenges-subtitle {
+            color: var(--gray);
+            font-size: 0.95em;
+            line-height: 1.5;
+            max-width: 480px;
+        }
+
+        .challenges-progress {
+            margin-top: var(--spacing-sm);
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            border-radius: 24px;
+            font-weight: 700;
+            font-size: 0.95em;
+        }
+
+        .challenges-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .challenge-card {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            background: var(--white);
+            border-radius: 16px;
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-md);
+            border-left: 4px solid var(--primary-light);
+            transition: var(--transition);
+        }
+
+        .challenge-card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .challenge-card.validated {
+            border-left-color: #34C759;
+            background: linear-gradient(135deg, rgba(52, 199, 89, 0.06) 0%, var(--white) 60%);
+        }
+
+        .challenge-icon {
+            font-size: 2em;
+            min-width: 48px;
+            text-align: center;
+        }
+
+        .challenge-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .challenge-name {
+            font-weight: 700;
+            color: var(--dark);
+            font-size: 1.05em;
+            margin-bottom: 2px;
+        }
+
+        .challenge-desc {
+            color: var(--gray);
+            font-size: 0.88em;
+            line-height: 1.4;
+        }
+
+        .challenge-add-btn {
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .challenge-add-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .challenge-add-btn:active {
+            transform: scale(0.92);
+        }
+
+        .challenge-check {
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #34C759;
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3em;
+            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.4);
+            animation: slideUp 0.3s ease-out;
+        }
+
         /* ===== EMPTY STATE ===== */
         .empty-state {
+
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1163,6 +1300,22 @@
                     </div>
                 </div>
             </div>
+
+            <!-- CHALLENGES SCREEN (Défis photos) -->
+            <div class="screen screen-challenges">
+                <div class="challenges-intro">
+                    <div class="challenges-title">🏆 Défis photos</div>
+                    <div class="challenges-subtitle">Réalise chaque défi en y associant une photo ou une vidéo. Une coche verte apparaît une fois le défi validé !</div>
+                    <div class="challenges-progress" id="challengesProgress">0 / 0 défis validés</div>
+                </div>
+                <div class="challenges-list" id="challengesList">
+                    <div class="empty-state">
+                        <div class="empty-icon">🏆</div>
+                        <div class="empty-text">Chargement des défis...</div>
+                    </div>
+                </div>
+                <input type="file" id="challengeFileInput" accept="image/*,video/*" style="display: none;">
+            </div>
         </div>
 
         <!-- IDENTITY MODAL (au démarrage) -->
@@ -1245,6 +1398,10 @@
                     <div class="menu-icon"><i class="fas fa-envelope"></i></div>
                     <div>Messages</div>
                 </div>
+                <div class="menu-item" data-screen="challenges">
+                    <div class="menu-icon"><i class="fas fa-trophy"></i></div>
+                    <div>Défis photos</div>
+                </div>
             </div>
         </div>
     </div>
@@ -1272,8 +1429,25 @@
             // Par défaut on ne montre QUE le contenu de l'utilisateur courant.
             // Passe à true après déverrouillage par mot de passe (bouton cadenas).
             showAllMedia: false,
-            showAllMessages: false
+            showAllMessages: false,
+            // Défi en cours de réalisation (quand on ouvre le sélecteur de fichier)
+            pendingChallengeId: null
         };
+
+        // ===== DÉFIS PHOTOS =====
+        // Liste des défis proposés aux invités. Chaque défi est validé lorsque
+        // l'invité y associe une photo/vidéo (marqueur [DEFI:<id>] dans le message).
+        const CHALLENGES = [
+            { id: 'couple',  icon: '💑', title: 'Les mariés',            desc: 'Une photo avec Inès & Valentin' },
+            { id: 'selfie',  icon: '🤳', title: 'Le selfie de groupe',   desc: 'Un selfie avec au moins 3 invités' },
+            { id: 'danse',   icon: '💃', title: 'La piste de danse',     desc: 'Capture un moment de danse endiablé' },
+            { id: 'tenue',   icon: '👗', title: 'La plus belle tenue',   desc: 'Immortalise la tenue qui t\'a marqué' },
+            { id: 'gateau',  icon: '🍰', title: 'La pièce montée',       desc: 'Une photo du gâteau ou du dessert' },
+            { id: 'emotion', icon: '😂', title: 'Le fou rire',           desc: 'Capture un éclat de rire' },
+            { id: 'deco',    icon: '🌸', title: 'La décoration',         desc: 'La déco qui t\'a émerveillé' },
+            { id: 'bisou',   icon: '💋', title: 'Le bisou',              desc: 'Un bisou volé entre invités' }
+        ];
+
 
 
 
@@ -1967,10 +2141,13 @@
                     state.showAllMessages = false;
                     updateMessagesLockBtn();
                     loadMessages();
+                } else if (screen === 'challenges') {
+                    loadChallenges();
                 }
 
             });
         });
+
 
 
         function showMenuScreen(screen) {
@@ -2148,6 +2325,126 @@
             dom.statusToast.classList.add('show');
             setTimeout(() => dom.statusToast.classList.remove('show'), 3000);
         }
+
+
+        // ===== DÉFIS PHOTOS : logique =====
+        // Charge la liste des défis et détermine lesquels sont validés pour l'invité
+        // courant (en scannant ses photos/vidéos à la recherche du marqueur [DEFI:<id>]).
+        async function loadChallenges() {
+            const listEl = document.getElementById('challengesList');
+            const progressEl = document.getElementById('challengesProgress');
+            const validated = new Set();
+
+            try {
+                const photoResponse = await fetch('/api/files?type=photo');
+                const photosData = await photoResponse.json();
+                const videoResponse = await fetch('/api/files?type=video');
+                const videosData = await videoResponse.json();
+
+                let media = [];
+                if (photosData.files) media.push(...photosData.files);
+                if (videosData.files) media.push(...videosData.files);
+
+                // On ne considère QUE les médias de l'invité courant.
+                const me = getUserIdentity().trim().toLowerCase();
+                if (me) {
+                    media = media.filter(m => {
+                        const a = (m.metadata && m.metadata.author ? m.metadata.author : '').trim().toLowerCase();
+                        return a === me;
+                    });
+                }
+
+                // Repérer les défis validés via le marqueur [DEFI:<id>] dans le message.
+                media.forEach(m => {
+                    const msg = (m.metadata && m.metadata.message) ? m.metadata.message : '';
+                    CHALLENGES.forEach(c => {
+                        if (msg.includes(`[DEFI:${c.id}]`)) validated.add(c.id);
+                    });
+                });
+            } catch (e) {
+                // En cas d'erreur réseau, on affiche quand même la liste (0 validé).
+            }
+
+            // Rendu des cartes.
+            listEl.innerHTML = '';
+            CHALLENGES.forEach(c => {
+                const isDone = validated.has(c.id);
+                const card = document.createElement('div');
+                card.className = 'challenge-card' + (isDone ? ' validated' : '');
+                card.innerHTML = `
+                    <div class="challenge-icon">${c.icon}</div>
+                    <div class="challenge-info">
+                        <div class="challenge-name">${c.title}</div>
+                        <div class="challenge-desc">${c.desc}</div>
+                    </div>
+                    ${isDone
+                        ? '<div class="challenge-check" title="Défi validé"><i class="fas fa-check"></i></div>'
+                        : `<button class="challenge-add-btn" title="Associer une photo/vidéo"><i class="fas fa-plus"></i></button>`}
+                `;
+                if (!isDone) {
+                    const btn = card.querySelector('.challenge-add-btn');
+                    btn.addEventListener('click', () => startChallengeUpload(c.id));
+                }
+                listEl.appendChild(card);
+            });
+
+            // Mise à jour du compteur de progression.
+            progressEl.textContent = `${validated.size} / ${CHALLENGES.length} défis validés`;
+        }
+
+        // Ouvre le sélecteur de fichier pour associer une photo/vidéo à un défi.
+        function startChallengeUpload(challengeId) {
+            state.pendingChallengeId = challengeId;
+            const input = document.getElementById('challengeFileInput');
+            input.value = '';
+            input.click();
+        }
+
+        // Réception du fichier choisi pour un défi -> upload avec le marqueur [DEFI:<id>].
+        document.getElementById('challengeFileInput').addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            const challengeId = state.pendingChallengeId;
+            e.target.value = '';
+            state.pendingChallengeId = null;
+
+            if (!file || !challengeId) return;
+
+            const isVideo = file.type && file.type.startsWith('video/');
+            const fileType = isVideo ? 'video' : 'photo';
+
+            // Extension d'origine (sinon jpg/webm par défaut)
+            let ext = isVideo ? 'webm' : 'jpg';
+            const nameParts = (file.name || '').split('.');
+            if (nameParts.length > 1) ext = nameParts.pop().toLowerCase();
+
+            try {
+                showToast('📤 Envoi du défi...');
+                const formData = new FormData();
+                formData.append('file', file, `${fileType}-defi-${Date.now()}.${ext}`);
+                formData.append('fileType', fileType);
+                formData.append('author', getUserIdentity());
+                formData.append('message', `[DEFI:${challengeId}]`);
+
+                const uploadResponse = await fetch('/api/upload?password=2024', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadResponse.ok) throw new Error('Erreur serveur');
+                const result = await uploadResponse.json();
+
+                if (result.success) {
+                    showToast('🏆 Défi validé !');
+                    loadChallenges();
+                    loadGallery();
+                } else {
+                    showToast('❌ Erreur: ' + (result.error || 'inconnue'));
+                }
+            } catch (err) {
+                showToast('❌ Erreur d\'envoi');
+            }
+        });
+
 
 
         async function toggleVideoRecording() {
