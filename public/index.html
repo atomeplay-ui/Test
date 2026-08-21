@@ -73,10 +73,16 @@
         .app-container {
             display: flex;
             flex-direction: column;
+            /* --app-height est calculée en JS (window.innerHeight) pour éviter les
+               décalages de hauteur connus sur iOS en mode "ajouté à l'écran d'accueil"
+               (100vh peut être mal évalué par WebKit dans ce contexte). 100vh reste
+               un fallback si le JS n'a pas encore tourné. */
             height: 100vh;
+            height: var(--app-height, 100vh);
             width: 100vw;
             background: linear-gradient(135deg, var(--gray-light) 0%, var(--white) 100%);
         }
+
 
         /* ===== HEADER ===== */
         .status-bar {
@@ -1793,7 +1799,21 @@
             showToast(`💕 Bienvenue ${firstName} !`);
         }
 
+        // ===== HAUTEUR RÉELLE DU VIEWPORT (fix iOS standalone) =====
+        // Sur iOS, en mode "ajouté à l'écran d'accueil", la valeur de 100vh peut être
+        // mal évaluée par WebKit selon la version/orientation, provoquant un décalage
+        // de toute l'interface (header/menu qui sortent de l'écran, bande vide en bas).
+        // On mesure donc la hauteur RÉELLE du viewport visible en JS et on la fixe
+        // via la variable CSS --app-height, recalculée au chargement + resize/rotation.
+        function setAppHeight() {
+            document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+        }
+        setAppHeight();
+        window.addEventListener('resize', setAppHeight);
+        window.addEventListener('orientationchange', () => setTimeout(setAppHeight, 200));
+
         document.addEventListener('DOMContentLoaded', () => {
+            setAppHeight();
             checkUserIdentity();
             initializeCamera();
             setupEventListeners();
@@ -1803,6 +1823,7 @@
             checkSouvenirUrlParam();
             checkAddToHomeScreenPrompt();
         });
+
 
         // ===== "AJOUTER À L'ÉCRAN D'ACCUEIL" (iPhone / Safari) =====
         // Affiche une seule fois un petit guide expliquant comment ajouter le site
