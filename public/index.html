@@ -1553,6 +1553,26 @@
             </div>
         </div>
 
+        <!-- ADD TO HOME SCREEN MODAL (iPhone / Safari uniquement, affiché une fois) -->
+        <div class="modal-overlay" id="a2hsModal">
+            <div class="modal-content" style="max-width: 380px; text-align: center;">
+                <img src="logo-mariage.png" alt="Logo" style="width: 64px; height: 64px; margin-bottom: var(--spacing-md); border-radius: 14px; box-shadow: var(--shadow-md);">
+                <div class="modal-header" style="margin-bottom: var(--spacing-sm);">📱 Accès plus rapide !</div>
+                <p style="color: var(--gray); margin-bottom: var(--spacing-lg); line-height: 1.5; text-align: left;">
+                    Ajoutez ce site à votre écran d'accueil pour y accéder en un clin d'œil, comme une vraie application :
+                </p>
+                <div style="text-align: left; background: var(--gray-light); border-radius: 12px; padding: var(--spacing-md); margin-bottom: var(--spacing-lg); line-height: 1.7; font-size: 0.95em;">
+                    1️⃣ Appuyez sur <strong>Partager</strong> <span style="display:inline-block; transform: translateY(2px);">📤</span> en bas de Safari<br>
+                    2️⃣ Faites défiler puis choisissez <strong>« Sur l'écran d'accueil »</strong> ➕<br>
+                    3️⃣ Appuyez sur <strong>« Ajouter »</strong> en haut à droite
+                </div>
+                <div class="modal-buttons" style="grid-template-columns: 1fr;">
+                    <button class="btn btn-primary" id="closeA2hsBtn">C'est compris, merci !</button>
+                </div>
+            </div>
+        </div>
+
+
         <!-- PASSWORD MODAL -->
         <div class="modal-overlay" id="passwordModal">
 
@@ -1779,7 +1799,60 @@
             loadGallery();
             loadMessages();
             checkSouvenirUrlParam();
+            checkAddToHomeScreenPrompt();
         });
+
+        // ===== "AJOUTER À L'ÉCRAN D'ACCUEIL" (iPhone / Safari) =====
+        // Affiche une seule fois un petit guide expliquant comment ajouter le site
+        // à l'écran d'accueil (via le bouton Partager de Safari), pour un accès
+        // plus rapide façon "vraie application". N'est jamais montré si :
+        // - l'appareil n'est pas un iPhone/iPad,
+        // - le navigateur n'est pas Safari (Chrome/Facebook iOS n'ont pas ce menu),
+        // - le site est déjà lancé depuis l'écran d'accueil (mode standalone),
+        // - l'utilisateur a déjà vu/fermé ce message une fois.
+        const A2HS_KEY = 'weddingA2hsPromptShown';
+
+        function isIos() {
+            return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+                // iPadOS 13+ se déclare parfois comme "MacIntel" mais supporte le tactile
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        function isSafari() {
+            const ua = navigator.userAgent;
+            // Safari contient "Safari" mais PAS "CriOS" (Chrome iOS), "FxiOS" (Firefox iOS)
+            // ni "..._Line/" / "FBAN"/"FBAV" (in-app browsers) qui n'ont pas le vrai menu Partager.
+            return /safari/i.test(ua) && !/crios|fxios|opios|edgios|fban|fbav|instagram|line\//i.test(ua);
+        }
+
+        function isStandalone() {
+            return window.navigator.standalone === true ||
+                window.matchMedia('(display-mode: standalone)').matches;
+        }
+
+        function checkAddToHomeScreenPrompt() {
+            try {
+                if (isStandalone()) return; // déjà installé sur l'écran d'accueil
+                if (!isIos() || !isSafari()) return; // uniquement iPhone/iPad + Safari
+                if (localStorage.getItem(A2HS_KEY)) return; // déjà affiché une fois
+
+                setTimeout(() => {
+                    document.getElementById('a2hsModal').classList.add('active');
+                }, 1200);
+            } catch (e) { /* ignore */ }
+        }
+
+        document.getElementById('closeA2hsBtn').addEventListener('click', () => {
+            localStorage.setItem(A2HS_KEY, '1');
+            document.getElementById('a2hsModal').classList.remove('active');
+        });
+        document.getElementById('a2hsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'a2hsModal') {
+                localStorage.setItem(A2HS_KEY, '1');
+                document.getElementById('a2hsModal').classList.remove('active');
+            }
+        });
+
 
 
 
