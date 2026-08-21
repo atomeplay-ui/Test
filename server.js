@@ -180,7 +180,91 @@ async function linkMediaToGuest(guestKey, fileId, fileType) {
   }
 }
 
+// ===== SYSTÈME DE POINTS / CLASSEMENT =====
+// Barème :
+//   - 1 point par média envoyé (photo, vidéo ou message audio)
+//   - 10 points par défi photo validé
+//   - +200 points bonus si TOUS les défis sont validés
+//   - 20 points par souvenir trouvé (QR code)
+// IMPORTANT : TOTAL_CHALLENGES doit rester égal à CHALLENGES.length côté front
+// (public/index.html) pour que le bonus "tous les défis" se déclenche correctement.
+const POINTS = {
+  media: 1,
+  challenge: 10,
+  allChallengesBonus: 200,
+  souvenir: 20
+};
+const TOTAL_CHALLENGES = 8;
+
+function computeGuestScore(guest) {
+  const mediaCount = guest && guest.media ? Object.keys(guest.media).length : 0;
+  const challengesCount = guest && guest.challenges ? Object.keys(guest.challenges).length : 0;
+  const souvenirsCount = guest && guest.souvenirs ? Object.keys(guest.souvenirs).length : 0;
+
+  let total = mediaCount * POINTS.media
+    + challengesCount * POINTS.challenge
+    + souvenirsCount * POINTS.souvenir;
+
+  const allChallengesDone = challengesCount >= TOTAL_CHALLENGES && TOTAL_CHALLENGES > 0;
+  if (allChallengesDone) total += POINTS.allChallengesBonus;
+
+  return { mediaCount, challengesCount, souvenirsCount, allChallengesDone, total };
+}
+
 // ===== ROUTES API =====
+
+// 0D. CLASSEMENT (leaderboard) des invités selon leurs points
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    let allGuests = {};
+
+    if (db) {
+      const snap = await db.ref('guests').once('value');
+      allGuests = snap.val() || {};
+    } else {
+      allGuests = readLocalGuests();
+    }
+
+    const leaderboard = Object.keys(allGuests).map(guestKey => {
+      const guest = allGuests[guestKey] || {};
+      const score = computeGuestScore(guest);
+      return {
+        guestKey,
+        firstName: guest.firstName || '',
+        lastName: guest.lastName || '',
+        ...score
+      };
+    });
+
+    // Tri décroissant par total de points, puis par ordre alphabétique en cas d'égalité
+    leaderboard.sort((a, b) => {
+      if (b.total !== a.total) return b.total - a.total;
+      return (a.firstName + a.lastName).localeCompare(b.firstName + b.lastName);
+    });
+
+    // Attribution du rang (les ex-aequo partagent le même rang)
+    let lastTotal = null;
+    let lastRank = 0;
+    leaderboard.forEach((entry, idx) => {
+      if (entry.total !== lastTotal) {
+        lastRank = idx + 1;
+        lastTotal = entry.total;
+      }
+      entry.rank = lastRank;
+    });
+
+    return res.json({
+      success: true,
+      points: POINTS,
+      totalChallenges: TOTAL_CHALLENGES,
+      leaderboard
+    });
+  } catch (error) {
+    console.error('Erreur classement:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 // 0A. LOGIN INVITÉ (par prénom + nom, sans mot de passe)
 // Crée l'invité s'il n'existe pas encore, sinon retourne ses données existantes

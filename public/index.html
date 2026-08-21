@@ -1001,7 +1001,176 @@
             border-radius: 10px;
         }
 
+        /* ===== CLASSEMENT (LEADERBOARD) ===== */
+        .screen-leaderboard {
+            flex-direction: column;
+            padding: var(--spacing-lg);
+            padding-bottom: 120px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            gap: var(--spacing-lg);
+        }
+
+        .leaderboard-points-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            justify-content: center;
+        }
+
+        .points-chip {
+            background: var(--gray-light);
+            color: var(--dark);
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 0.8em;
+            font-weight: 600;
+            border: 1px solid var(--primary-light);
+        }
+
+        .leaderboard-podium {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-md) 0;
+        }
+
+        .podium-slot {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-sm);
+            width: 30%;
+        }
+
+        .podium-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.3em;
+            box-shadow: var(--shadow-md);
+        }
+
+        .podium-slot.rank-1 .podium-avatar {
+            width: 72px;
+            height: 72px;
+            font-size: 1.6em;
+        }
+
+        .podium-name {
+            font-weight: 700;
+            font-size: 0.85em;
+            text-align: center;
+            color: var(--dark);
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .podium-score {
+            font-weight: 800;
+            color: var(--primary);
+            font-size: 0.95em;
+        }
+
+        .podium-bar {
+            width: 100%;
+            border-radius: 12px 12px 0 0;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent-light) 100%);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: var(--spacing-sm);
+            font-size: 1.6em;
+        }
+
+        .podium-slot.rank-1 .podium-bar {
+            height: 90px;
+            background: linear-gradient(135deg, #FFD700 0%, var(--primary) 100%);
+        }
+
+        .podium-slot.rank-2 .podium-bar {
+            height: 65px;
+            background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%);
+        }
+
+        .podium-slot.rank-3 .podium-bar {
+            height: 45px;
+            background: linear-gradient(135deg, #D8935A 0%, #B87333 100%);
+        }
+
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .leaderboard-row {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            background: var(--white);
+            border-radius: 12px;
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+            border-left: 4px solid var(--primary-light);
+            transition: var(--transition);
+        }
+
+        .leaderboard-row.me {
+            border-left-color: var(--accent);
+            background: linear-gradient(135deg, rgba(193, 102, 107, 0.06) 0%, var(--white) 60%);
+        }
+
+        .leaderboard-rank {
+            font-weight: 800;
+            color: var(--gray);
+            min-width: 28px;
+            text-align: center;
+            font-size: 1em;
+        }
+
+        .leaderboard-row:nth-child(1) .leaderboard-rank,
+        .leaderboard-rank.top1 { color: #D4AF37; }
+        .leaderboard-rank.top2 { color: #9A9A9A; }
+        .leaderboard-rank.top3 { color: #B87333; }
+
+        .leaderboard-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .leaderboard-guest-name {
+            font-weight: 700;
+            color: var(--dark);
+            font-size: 0.98em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .leaderboard-guest-detail {
+            font-size: 0.78em;
+            color: var(--gray);
+        }
+
+        .leaderboard-total {
+            font-weight: 800;
+            font-size: 1.1em;
+            color: var(--primary);
+            white-space: nowrap;
+        }
+
         /* ===== QR SCANNER MODAL ===== */
+
         #qrScannerContainer {
             width: 100%;
             border-radius: 16px;
@@ -1502,9 +1671,31 @@
                 </button>
                 <div class="challenges-list" id="souvenirsList"></div>
             </div>
+
+            <!-- LEADERBOARD SCREEN (Classement) -->
+            <div class="screen screen-leaderboard">
+                <div class="challenges-intro">
+                    <div class="challenges-title">🏅 Classement</div>
+                    <div class="challenges-subtitle">Cumulez des points en partageant des photos/vidéos, en validant des défis et en trouvant des souvenirs !</div>
+                    <div class="leaderboard-points-info">
+                        <span class="points-chip">📸 +1 pt / média</span>
+                        <span class="points-chip">🏆 +10 pts / défi</span>
+                        <span class="points-chip">🎉 +200 pts tous les défis</span>
+                        <span class="points-chip">🗺️ +20 pts / souvenir</span>
+                    </div>
+                </div>
+                <div class="leaderboard-podium" id="leaderboardPodium"></div>
+                <div class="leaderboard-list" id="leaderboardList">
+                    <div class="empty-state">
+                        <div class="empty-icon">🏅</div>
+                        <div class="empty-text">Chargement du classement...</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- QR SCANNER MODAL -->
+
         <div class="modal-overlay" id="qrScannerModal">
             <div class="modal-content" style="max-width: 480px; width: 92%; display: flex; flex-direction: column;">
                 <div class="modal-header" style="margin-bottom: var(--spacing-md);">📷 Scanner un QR code</div>
@@ -1654,7 +1845,12 @@
                     <div class="menu-icon"><i class="fas fa-map-marked-alt"></i></div>
                     <div>Chasse aux souvenirs</div>
                 </div>
+                <div class="menu-item" data-screen="leaderboard">
+                    <div class="menu-icon"><i class="fas fa-medal"></i></div>
+                    <div>Classement</div>
+                </div>
             </div>
+
         </div>
     </div>
 
@@ -2523,10 +2719,13 @@
                     loadChallenges();
                 } else if (screen === 'souvenirs') {
                     loadSouvenirsList();
+                } else if (screen === 'leaderboard') {
+                    loadLeaderboard();
                 }
 
             });
         });
+
 
         // ===== CHASSE AUX SOUVENIRS : logique =====
         const SOUVENIRS_KEY = 'weddingSouvenirsFound';
