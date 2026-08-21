@@ -522,7 +522,80 @@ app.delete('/api/files/:fileId', async (req, res) => {
   }
 });
 
+// 4B. METTRE À JOUR UN FICHIER (associer un défi à un média déjà existant)
+// Permet d'ajouter le tag [DEFI:<id>] au message d'une photo/vidéo déjà uploadée,
+// sans avoir à ré-envoyer le fichier (utilisé par la page "Défis photos").
+app.patch('/api/files/:fileId', async (req, res) => {
+  try {
+    const password = req.query.password || req.body.password;
+    if (password !== PASSWORD) {
+      return res.status(401).json({ error: 'Mot de passe incorrect' });
+    }
+
+    const fileId = req.params.fileId;
+    const newMessage = req.body.message;
+
+    if (bucket) {
+      const [files] = await bucket.getFiles({ prefix: 'uploads/' });
+      const file = files.find(f => f.name.includes(fileId));
+      if (!file) {
+        return res.status(404).json({ error: 'Fichier non trouvé' });
+      }
+
+      const [fbMeta] = await file.getMetadata();
+      const custom = (fbMeta && fbMeta.metadata) ? { ...fbMeta.metadata } : {};
+
+      if (typeof newMessage === 'string' && newMessage.trim()) {
+        const existing = custom.message || '';
+        custom.message = existing.includes(newMessage)
+          ? existing
+          : (existing ? `${existing} ${newMessage}` : newMessage);
+      }
+
+      await file.setMetadata({ metadata: custom });
+
+      // Mettre à jour aussi le JSON local si présent (dev uniquement, pas Vercel)
+      if (!isVercel) {
+        try {
+          const fileType = custom.type || 'photo';
+          const metadataPath = path.join('metadata', fileType, `${fileId}.json`);
+          if (fs.existsSync(metadataPath)) {
+            const localMeta = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+            localMeta.message = custom.message;
+            fs.writeFileSync(metadataPath, JSON.stringify(localMeta, null, 2));
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      if (db) {
+        try { await db.ref(`files/${fileId}`).update({ message: custom.message }); } catch (e) { /* ignore */ }
+      }
+
+      return res.json({ success: true, message: custom.message });
+    } else {
+      // Fallback local
+      const metadataPath = path.join('metadata', `${fileId}.json`);
+      if (!fs.existsSync(metadataPath)) {
+        return res.status(404).json({ error: 'Fichier non trouvé' });
+      }
+      const localMeta = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+      if (typeof newMessage === 'string' && newMessage.trim()) {
+        const existing = localMeta.message || '';
+        localMeta.message = existing.includes(newMessage)
+          ? existing
+          : (existing ? `${existing} ${newMessage}` : newMessage);
+      }
+      fs.writeFileSync(metadataPath, JSON.stringify(localMeta));
+      return res.json({ success: true, message: localMeta.message, storage: 'local' });
+    }
+  } catch (error) {
+    console.error('Erreur mise à jour fichier:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 5. TÉLÉCHARGER UN FICHIER (pour fallback local)
+
 app.get('/files/:fileId', (req, res) => {
   const filePath = path.join('uploads', req.params.fileId);
   if (fs.existsSync(filePath)) {

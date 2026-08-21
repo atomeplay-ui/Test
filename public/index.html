@@ -841,6 +841,55 @@
             animation: slideUp 0.3s ease-out;
         }
 
+        /* ===== CHALLENGE PICKER MODAL (grille de sélection) ===== */
+        .picker-item {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+            border: 3px solid transparent;
+            background: var(--gray-light);
+            transition: var(--transition);
+        }
+
+        .picker-item:hover {
+            border-color: var(--primary);
+            transform: scale(1.03);
+        }
+
+        .picker-item img,
+        .picker-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .picker-item .picker-video-badge {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(0,0,0,0.6);
+            color: var(--white);
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+        }
+
+        .picker-empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: var(--gray);
+            padding: var(--spacing-lg);
+            font-size: 0.9em;
+        }
+
+
         /* ===== EMPTY STATE ===== */
         .empty-state {
 
@@ -1317,6 +1366,23 @@
                 <input type="file" id="challengeFileInput" accept="image/*,video/*" style="display: none;">
             </div>
         </div>
+
+        <!-- CHALLENGE PICKER MODAL (choisir une photo/vidéo déjà prise, ou en importer une) -->
+        <div class="modal-overlay" id="challengePickerModal">
+            <div class="modal-content" style="max-width: 480px; width: 92%; max-height: 85vh; display: flex; flex-direction: column;">
+                <div class="modal-header" style="margin-bottom: var(--spacing-md);">📷 Choisir un média</div>
+                <p style="color: var(--gray); margin-bottom: var(--spacing-md); font-size: 0.9em;">
+                    Sélectionnez une photo/vidéo déjà prise avec l'application, ou importez-en une depuis votre téléphone.
+                </p>
+                <button class="btn btn-primary" id="challengeImportBtn" style="margin-bottom: var(--spacing-md); width: 100%;">
+                    <i class="fas fa-upload"></i> Importer depuis mon téléphone
+                </button>
+                <div id="challengePickerGrid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-sm); overflow-y: auto; flex: 1; padding-bottom: var(--spacing-sm);">
+                </div>
+                <button class="btn btn-secondary" id="challengePickerCloseBtn" style="margin-top: var(--spacing-md); width: 100%;">Annuler</button>
+            </div>
+        </div>
+
 
         <!-- IDENTITY MODAL (au démarrage) -->
         <div class="modal-overlay" id="identityModal">
@@ -2392,20 +2458,97 @@
             progressEl.textContent = `${validated.size} / ${CHALLENGES.length} défis validés`;
         }
 
-        // Ouvre le sélecteur de fichier pour associer une photo/vidéo à un défi.
+        // Ouvre le modal de sélection : photo/vidéo déjà prise avec l'app, ou import depuis le téléphone.
         function startChallengeUpload(challengeId) {
             state.pendingChallengeId = challengeId;
+            document.getElementById('challengePickerModal').classList.add('active');
+            loadChallengePickerGrid();
+        }
+
+        function closeChallengePicker() {
+            document.getElementById('challengePickerModal').classList.remove('active');
+            state.pendingChallengeId = null;
+        }
+
+        async function loadChallengePickerGrid() {
+            const grid = document.getElementById('challengePickerGrid');
+            grid.innerHTML = '<div class="picker-empty">Chargement...</div>';
+            try {
+                const photoResponse = await fetch('/api/files?type=photo');
+                const photosData = await photoResponse.json();
+                const videoResponse = await fetch('/api/files?type=video');
+                const videosData = await videoResponse.json();
+                let media = [];
+                if (photosData.files) media.push(...photosData.files);
+                if (videosData.files) media.push(...videosData.files);
+                const me = getUserIdentity().trim().toLowerCase();
+                if (me) {
+                    media = media.filter(m => {
+                        const a = (m.metadata && m.metadata.author ? m.metadata.author : '').trim().toLowerCase();
+                        return a === me;
+                    });
+                }
+                media.sort((a, b) => new Date(b.metadata.uploadedAt) - new Date(a.metadata.uploadedAt));
+                grid.innerHTML = '';
+                if (media.length === 0) {
+                    grid.innerHTML = '<div class="picker-empty">Vous n\'avez encore aucune photo/vidéo.<br>Importez-en une depuis votre téléphone ci-dessus.</div>';
+                    return;
+                }
+                media.forEach(m => {
+                    const isVideo = m.metadata && m.metadata.type === 'video';
+                    const item = document.createElement('div');
+                    item.className = 'picker-item';
+                    item.innerHTML = isVideo
+                        ? `<video src="${m.url}" muted playsinline></video><div class="picker-video-badge"><i class="fas fa-play"></i></div>`
+                        : `<img src="${m.url}" alt="">`;
+                    item.addEventListener('click', () => selectExistingMediaForChallenge(m.fileId));
+                    grid.appendChild(item);
+                });
+            } catch (e) {
+                grid.innerHTML = '<div class="picker-empty">Erreur de chargement</div>';
+            }
+        }
+
+        async function selectExistingMediaForChallenge(fileId) {
+            const challengeId = state.pendingChallengeId;
+            if (!challengeId) return;
+            try {
+                showToast('📤 Association en cours...');
+                const response = await fetch(`/api/files/${fileId}?password=2024`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: `[DEFI:${challengeId}]` })
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    showToast('🏆 Défi validé !');
+                    closeChallengePicker();
+                    loadChallenges();
+                    loadGallery();
+                } else {
+                    showToast('❌ Erreur: ' + (result.error || 'inconnue'));
+                }
+            } catch (e) {
+                showToast('❌ Erreur réseau');
+            }
+        }
+
+        document.getElementById('challengePickerCloseBtn').addEventListener('click', closeChallengePicker);
+        document.getElementById('challengePickerModal').addEventListener('click', (e) => {
+            if (e.target.id === 'challengePickerModal') closeChallengePicker();
+        });
+
+        document.getElementById('challengeImportBtn').addEventListener('click', () => {
             const input = document.getElementById('challengeFileInput');
             input.value = '';
             input.click();
-        }
+        });
 
-        // Réception du fichier choisi pour un défi -> upload avec le marqueur [DEFI:<id>].
+        // Réception du fichier importé depuis le téléphone pour un défi -> upload avec le marqueur [DEFI:<id>].
         document.getElementById('challengeFileInput').addEventListener('change', async (e) => {
             const file = e.target.files && e.target.files[0];
             const challengeId = state.pendingChallengeId;
             e.target.value = '';
-            state.pendingChallengeId = null;
 
             if (!file || !challengeId) return;
 
@@ -2435,6 +2578,7 @@
 
                 if (result.success) {
                     showToast('🏆 Défi validé !');
+                    closeChallengePicker();
                     loadChallenges();
                     loadGallery();
                 } else {
