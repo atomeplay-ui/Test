@@ -756,9 +756,35 @@ app.delete('/api/files/:fileId', async (req, res) => {
         return res.status(404).json({ error: 'Fichier non trouvé' });
       }
 
+      // Récupérer le guestKey (et le type) AVANT de supprimer le fichier,
+      // sinon impossible de nettoyer l'entrée liée dans guests/{guestKey}/media
+      let ownerGuestKey = null;
+      try {
+        const [fbMeta] = await file.getMetadata();
+        const custom = (fbMeta && fbMeta.metadata) ? fbMeta.metadata : {};
+        ownerGuestKey = custom.guestKey || null;
+      } catch (e) {
+        console.warn('⚠️ Impossible de lire les métadonnées avant suppression:', e.message);
+      }
+
       await file.delete();
+
       if (db) {
         await db.ref(`files/${fileId}`).remove();
+        if (ownerGuestKey) {
+          await db.ref(`guests/${ownerGuestKey}/media/${fileId}`).remove();
+        }
+      } else if (ownerGuestKey) {
+        // Fallback local pour les invités (JSON sur disque)
+        try {
+          const all = readLocalGuests();
+          if (all[ownerGuestKey] && all[ownerGuestKey].media) {
+            delete all[ownerGuestKey].media[fileId];
+            writeLocalGuests(all);
+          }
+        } catch (e) {
+          console.warn('⚠️ Nettoyage guest local non disponible:', e.message);
+        }
       }
 
       return res.json({ success: true, message: 'Fichier supprimé' });
@@ -769,11 +795,36 @@ app.delete('/api/files/:fileId', async (req, res) => {
         return res.status(404).json({ error: 'Fichier non trouvé' });
       }
 
+      // Récupérer le guestKey depuis les métadonnées locales avant suppression
+      let ownerGuestKey = null;
+      const metadataPath = path.join('metadata', `${fileId}.json`);
+      try {
+        if (fs.existsSync(metadataPath)) {
+          const localMeta = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+          ownerGuestKey = localMeta.guestKey || null;
+        }
+      } catch (e) { /* ignore */ }
+
       fs.unlinkSync(filePath);
-      fs.unlinkSync(path.join('metadata', `${fileId}.json`));
+      if (fs.existsSync(metadataPath)) {
+        fs.unlinkSync(metadataPath);
+      }
+
+      if (ownerGuestKey) {
+        try {
+          const all = readLocalGuests();
+          if (all[ownerGuestKey] && all[ownerGuestKey].media) {
+            delete all[ownerGuestKey].media[fileId];
+            writeLocalGuests(all);
+          }
+        } catch (e) {
+          console.warn('⚠️ Nettoyage guest local non disponible:', e.message);
+        }
+      }
 
       return res.json({ success: true, message: 'Fichier supprimé', storage: 'local' });
     }
+
   } catch (error) {
     console.error('Erreur suppression:', error);
     res.status(500).json({ error: error.message });
