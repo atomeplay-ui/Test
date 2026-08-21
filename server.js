@@ -568,10 +568,15 @@ app.patch('/api/files/:fileId', async (req, res) => {
       }
 
       if (db) {
-        try { await db.ref(`files/${fileId}`).update({ message: custom.message }); } catch (e) { /* ignore */ }
+        // Fire-and-forget : ne JAMAIS attendre cet appel, sinon si la connexion
+        // Realtime Database est lente/bloquée, la réponse HTTP reste bloquée
+        // indéfiniment (le modal "Défis photos" ne se ferme jamais côté client).
+        db.ref(`files/${fileId}`).update({ message: custom.message })
+          .catch(e => console.warn('⚠️ Firebase DB update non disponible:', e.message));
       }
 
       return res.json({ success: true, message: custom.message });
+
     } else {
       // Fallback local
       const metadataPath = path.join('metadata', `${fileId}.json`);

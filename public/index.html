@@ -2514,11 +2514,18 @@
             if (!challengeId) return;
             try {
                 showToast('📤 Association en cours...');
+                // Sécurité : on n'attend jamais indéfiniment la réponse du serveur.
+                // Si ça prend plus de 15s (ex: souci réseau), on abandonne et on
+                // prévient l'utilisateur au lieu de laisser le modal bloqué.
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
                 const response = await fetch(`/api/files/${fileId}?password=2024`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: `[DEFI:${challengeId}]` })
+                    body: JSON.stringify({ message: `[DEFI:${challengeId}]` }),
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
                 const result = await response.json();
                 if (response.ok && result.success) {
                     showToast('🏆 Défi validé !');
@@ -2529,9 +2536,10 @@
                     showToast('❌ Erreur: ' + (result.error || 'inconnue'));
                 }
             } catch (e) {
-                showToast('❌ Erreur réseau');
+                showToast(e && e.name === 'AbortError' ? '❌ Le serveur ne répond pas, réessayez' : '❌ Erreur réseau');
             }
         }
+
 
         document.getElementById('challengePickerCloseBtn').addEventListener('click', closeChallengePicker);
         document.getElementById('challengePickerModal').addEventListener('click', (e) => {
