@@ -889,8 +889,109 @@
             font-size: 0.9em;
         }
 
+        /* ===== CHASSE AUX SOUVENIRS ===== */
+        .screen-souvenirs {
+            flex-direction: column;
+            padding: var(--spacing-lg);
+            padding-bottom: 120px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            gap: var(--spacing-lg);
+        }
+
+        .souvenirs-scan-btn {
+            width: 100%;
+            padding: var(--spacing-lg);
+            font-size: 1.05em;
+        }
+
+        .souvenir-card {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-md);
+            background: var(--white);
+            border-radius: 16px;
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-md);
+            border-left: 4px solid var(--primary-light);
+            transition: var(--transition);
+        }
+
+        .souvenir-card.found {
+            border-left-color: #34C759;
+            background: linear-gradient(135deg, rgba(52, 199, 89, 0.06) 0%, var(--white) 60%);
+        }
+
+        .souvenir-card.locked .souvenir-story {
+            display: none;
+        }
+
+        .souvenir-icon {
+            font-size: 2em;
+            min-width: 44px;
+            text-align: center;
+            filter: none;
+        }
+
+        .souvenir-card.locked .souvenir-icon {
+            filter: grayscale(1) opacity(0.5);
+        }
+
+        .souvenir-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .souvenir-title {
+            font-weight: 700;
+            color: var(--dark);
+            font-size: 1.05em;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .souvenir-badge-found {
+            font-size: 0.7em;
+            background: #34C759;
+            color: var(--white);
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 700;
+        }
+
+        .souvenir-clue {
+            color: var(--gray);
+            font-size: 0.88em;
+            line-height: 1.4;
+            font-style: italic;
+        }
+
+        .souvenir-story {
+            margin-top: var(--spacing-sm);
+            color: var(--dark);
+            font-size: 0.92em;
+            line-height: 1.5;
+            background: var(--gray-light);
+            padding: var(--spacing-md);
+            border-radius: 10px;
+        }
+
+        /* ===== QR SCANNER MODAL ===== */
+        #qrScannerContainer {
+            width: 100%;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #qrScannerContainer video {
+            border-radius: 16px;
+        }
 
         /* ===== EMPTY STATE ===== */
+
         .empty-state {
 
             display: flex;
@@ -1365,9 +1466,47 @@
                 </div>
                 <input type="file" id="challengeFileInput" accept="image/*,video/*" style="display: none;">
             </div>
+
+            <!-- CHASSE AUX SOUVENIRS SCREEN -->
+            <div class="screen screen-souvenirs">
+                <div class="challenges-intro">
+                    <div class="challenges-title">🗺️ Chasse aux souvenirs</div>
+                    <div class="challenges-subtitle">Des souvenirs sont cachés dans la salle ! Scanne le QR code sur chacun pour révéler son histoire.</div>
+                    <div class="challenges-progress" id="souvenirsProgress">0 / 0 souvenirs trouvés</div>
+                </div>
+                <button class="btn btn-primary souvenirs-scan-btn" id="scanQrBtn">
+                    <i class="fas fa-qrcode"></i> Scanner un QR code
+                </button>
+                <div class="challenges-list" id="souvenirsList"></div>
+            </div>
+        </div>
+
+        <!-- QR SCANNER MODAL -->
+        <div class="modal-overlay" id="qrScannerModal">
+            <div class="modal-content" style="max-width: 480px; width: 92%; display: flex; flex-direction: column;">
+                <div class="modal-header" style="margin-bottom: var(--spacing-md);">📷 Scanner un QR code</div>
+                <div id="qrScannerContainer">
+                    <video id="qrVideo" autoplay playsinline muted style="width: 100%; display: block;"></video>
+                </div>
+                <p style="color: var(--gray); margin-top: var(--spacing-md); font-size: 0.85em; text-align: center;">
+                    Pointez la caméra vers le QR code caché sur le souvenir.
+                </p>
+                <button class="btn btn-secondary" id="qrScannerCloseBtn" style="margin-top: var(--spacing-md); width: 100%;">Annuler</button>
+            </div>
+        </div>
+
+        <!-- SOUVENIR FOUND MODAL (révélation) -->
+        <div class="modal-overlay" id="souvenirFoundModal">
+            <div class="modal-content" style="max-width: 420px; width: 90%; text-align: center;">
+                <div id="souvenirFoundIcon" style="font-size: 3.5em; margin-bottom: var(--spacing-md);">🎉</div>
+                <div class="modal-header" id="souvenirFoundTitle" style="margin-bottom: var(--spacing-sm);">Souvenir trouvé !</div>
+                <p id="souvenirFoundStory" style="color: var(--dark); line-height: 1.6; margin-bottom: var(--spacing-lg);"></p>
+                <button class="btn btn-primary" id="souvenirFoundCloseBtn" style="width: 100%;">Super !</button>
+            </div>
         </div>
 
         <!-- CHALLENGE PICKER MODAL (choisir une photo/vidéo déjà prise, ou en importer une) -->
+
         <div class="modal-overlay" id="challengePickerModal">
             <div class="modal-content" style="max-width: 480px; width: 92%; max-height: 85vh; display: flex; flex-direction: column;">
                 <div class="modal-header" style="margin-bottom: var(--spacing-md);">📷 Choisir un média</div>
@@ -1468,14 +1607,22 @@
                     <div class="menu-icon"><i class="fas fa-trophy"></i></div>
                     <div>Défis photos</div>
                 </div>
+                <div class="menu-item" data-screen="souvenirs">
+                    <div class="menu-icon"><i class="fas fa-map-marked-alt"></i></div>
+                    <div>Chasse aux souvenirs</div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Hidden canvas -->
     <canvas id="canvas" style="display: none;"></canvas>
+    <canvas id="qrCanvas" style="display: none;"></canvas>
 
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="souvenirs-data.js"></script>
     <script>
+
         const PASSWORD = "2024";
 
         const state = {
@@ -1614,9 +1761,12 @@
             checkUserIdentity();
             initializeCamera();
             setupEventListeners();
+            setupSouvenirsEventListeners();
             loadGallery();
             loadMessages();
+            checkSouvenirUrlParam();
         });
+
 
 
         async function initializeCamera() {
@@ -2209,10 +2359,171 @@
                     loadMessages();
                 } else if (screen === 'challenges') {
                     loadChallenges();
+                } else if (screen === 'souvenirs') {
+                    loadSouvenirsList();
                 }
 
             });
         });
+
+        // ===== CHASSE AUX SOUVENIRS : logique =====
+        const SOUVENIRS_KEY = 'weddingSouvenirsFound';
+
+        function getFoundSouvenirs() {
+            try {
+                const raw = localStorage.getItem(SOUVENIRS_KEY);
+                return raw ? new Set(JSON.parse(raw)) : new Set();
+            } catch (e) { return new Set(); }
+        }
+
+        function markSouvenirFound(id) {
+            const found = getFoundSouvenirs();
+            found.add(id);
+            localStorage.setItem(SOUVENIRS_KEY, JSON.stringify(Array.from(found)));
+        }
+
+        function loadSouvenirsList() {
+            const listEl = document.getElementById('souvenirsList');
+            const progressEl = document.getElementById('souvenirsProgress');
+            const found = getFoundSouvenirs();
+
+            listEl.innerHTML = '';
+            (typeof SOUVENIRS !== 'undefined' ? SOUVENIRS : []).forEach(s => {
+                const isFound = found.has(s.id);
+                const card = document.createElement('div');
+                card.className = 'souvenir-card' + (isFound ? ' found' : ' locked');
+                card.innerHTML = `
+                    <div class="souvenir-icon">${s.icon}</div>
+                    <div class="souvenir-info">
+                        <div class="souvenir-title">${s.title} ${isFound ? '<span class="souvenir-badge-found">Trouvé</span>' : ''}</div>
+                        ${isFound
+                            ? `<div class="souvenir-story">${s.story}</div>`
+                            : `<div class="souvenir-clue">💡 ${s.clue}</div>`}
+                    </div>
+                `;
+                listEl.appendChild(card);
+            });
+
+            progressEl.textContent = `${found.size} / ${(typeof SOUVENIRS !== 'undefined' ? SOUVENIRS.length : 0)} souvenirs trouvés`;
+        }
+
+        // Vérifie si l'app a été ouverte via un lien de QR code (?souvenir=<id>)
+        // et valide directement le souvenir correspondant (utile en secours si le
+        // scanner caméra ne fonctionne pas sur certains téléphones).
+        function checkSouvenirUrlParam() {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('souvenir');
+            if (id) {
+                validateSouvenir(id);
+                // Nettoyer l'URL pour éviter une re-validation au rechargement
+                params.delete('souvenir');
+                const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+                window.history.replaceState({}, '', newUrl);
+            }
+        }
+
+        function validateSouvenir(id) {
+            const souvenir = (typeof SOUVENIRS !== 'undefined' ? SOUVENIRS : []).find(s => s.id === id);
+            if (!souvenir) {
+                showToast('❌ QR code inconnu');
+                return;
+            }
+            const alreadyFound = getFoundSouvenirs().has(id);
+            markSouvenirFound(id);
+            showScreenByName('souvenirs');
+
+            document.getElementById('souvenirFoundIcon').textContent = souvenir.icon;
+            document.getElementById('souvenirFoundTitle').textContent = alreadyFound ? souvenir.title : `Souvenir trouvé : ${souvenir.title}`;
+            document.getElementById('souvenirFoundStory').textContent = souvenir.story;
+            document.getElementById('souvenirFoundModal').classList.add('active');
+            loadSouvenirsList();
+        }
+
+        function showScreenByName(screen) {
+            dom.menuItems.forEach(m => m.classList.toggle('active', m.dataset.screen === screen));
+            dom.screens.forEach(s => s.classList.remove('active'));
+            const target = document.querySelector('.screen-' + screen);
+            if (target) target.classList.add('active');
+            state.currentScreen = screen;
+        }
+
+        document.getElementById('souvenirFoundCloseBtn').addEventListener('click', () => {
+            document.getElementById('souvenirFoundModal').classList.remove('active');
+        });
+        document.getElementById('souvenirFoundModal').addEventListener('click', (e) => {
+            if (e.target.id === 'souvenirFoundModal') document.getElementById('souvenirFoundModal').classList.remove('active');
+        });
+
+        // ===== SCANNER QR CODE (jsQR + caméra) =====
+        let qrScanStream = null;
+        let qrScanRafId = null;
+
+        async function openQrScanner() {
+            document.getElementById('qrScannerModal').classList.add('active');
+            try {
+                qrScanStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                const video = document.getElementById('qrVideo');
+                video.srcObject = qrScanStream;
+                await video.play().catch(() => {});
+                qrScanLoop();
+            } catch (e) {
+                showToast('❌ Impossible d\'accéder à la caméra');
+                closeQrScanner();
+            }
+        }
+
+        function closeQrScanner() {
+            document.getElementById('qrScannerModal').classList.remove('active');
+            if (qrScanRafId) { cancelAnimationFrame(qrScanRafId); qrScanRafId = null; }
+            if (qrScanStream) {
+                qrScanStream.getTracks().forEach(t => t.stop());
+                qrScanStream = null;
+            }
+        }
+
+        function qrScanLoop() {
+            const video = document.getElementById('qrVideo');
+            const canvas = document.getElementById('qrCanvas');
+
+            if (video.readyState === video.HAVE_ENOUGH_DATA && typeof jsQR !== 'undefined') {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                if (code && code.data) {
+                    let id = code.data.trim();
+                    // Le QR peut contenir soit directement l'id, soit une URL complète
+                    // (ex: https://monsite.fr/?souvenir=bouquet) -> on extrait le paramètre.
+                    try {
+                        if (id.includes('souvenir=')) {
+                            const url = new URL(id, window.location.origin);
+                            id = url.searchParams.get('souvenir') || id;
+                        }
+                    } catch (e) { /* pas une URL valide, on garde tel quel */ }
+
+                    closeQrScanner();
+                    validateSouvenir(id);
+                    return;
+                }
+            }
+            qrScanRafId = requestAnimationFrame(qrScanLoop);
+        }
+
+        function setupSouvenirsEventListeners() {
+            const scanBtn = document.getElementById('scanQrBtn');
+            const closeBtn = document.getElementById('qrScannerCloseBtn');
+            if (scanBtn) scanBtn.addEventListener('click', openQrScanner);
+            if (closeBtn) closeBtn.addEventListener('click', closeQrScanner);
+            const modal = document.getElementById('qrScannerModal');
+            if (modal) modal.addEventListener('click', (e) => {
+                if (e.target.id === 'qrScannerModal') closeQrScanner();
+            });
+        }
+
 
 
 

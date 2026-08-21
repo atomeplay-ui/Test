@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>QR Codes - Chasse aux souvenirs (page admin)</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #F5F3F0;
+        padding: 24px;
+    }
+    h1 {
+        text-align: center;
+        color: #C1666B;
+        margin-bottom: 8px;
+    }
+    .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 24px;
+    }
+    .base-url-box {
+        max-width: 480px;
+        margin: 0 auto 32px;
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    .base-url-box label {
+        font-weight: 600;
+        font-size: 0.9em;
+        white-space: nowrap;
+    }
+    .base-url-box input {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #E8D5B0;
+        border-radius: 8px;
+        font-size: 0.9em;
+    }
+    .base-url-box button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 8px;
+        background: #D4AF37;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .print-btn-wrapper {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+    .print-btn-wrapper button {
+        padding: 12px 28px;
+        border: none;
+        border-radius: 24px;
+        background: linear-gradient(135deg, #D4AF37 0%, #C1666B 100%);
+        color: white;
+        font-weight: 700;
+        font-size: 1em;
+        cursor: pointer;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+    }
+    .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 24px;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    .qr-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border: 2px dashed #E8D5B0;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    .qr-card .icon { font-size: 2.2em; margin-bottom: 8px; }
+    .qr-card .title { font-weight: 700; margin-bottom: 4px; color: #1F1F1F; }
+    .qr-card .id { color: #9A9A9A; font-size: 0.8em; margin-bottom: 12px; }
+    .qr-card .qr-container { display: flex; justify-content: center; margin-bottom: 12px; }
+    .qr-card .url-text {
+        font-size: 0.7em;
+        color: #9A9A9A;
+        word-break: break-all;
+    }
+
+    @media print {
+        .base-url-box, .print-btn-wrapper, .subtitle { display: none; }
+        h1 { display: none; }
+        body { background: white; padding: 0; }
+        .cards-grid { gap: 16px; }
+        .qr-card { box-shadow: none; }
+    }
+</style>
+</head>
+<body>
+
+<h1>🗺️ QR Codes — Chasse aux souvenirs</h1>
+<p class="subtitle">Page réservée aux organisateurs : générez et imprimez les QR codes à cacher dans la salle.</p>
+
+<div class="base-url-box">
+    <label for="baseUrlInput">URL du site :</label>
+    <input type="text" id="baseUrlInput" placeholder="https://votre-site.vercel.app">
+    <button id="regenBtn">Générer</button>
+</div>
+
+<div class="print-btn-wrapper">
+    <button onclick="window.print()">🖨️ Imprimer toutes les cartes</button>
+</div>
+
+<div class="cards-grid" id="cardsGrid"></div>
+
+<script src="souvenirs-data.js"></script>
+<script>
+    const input = document.getElementById('baseUrlInput');
+    // Valeur par défaut : l'URL courante du site (sans query string)
+    input.value = window.location.origin;
+
+    function render() {
+        const base = (input.value || window.location.origin).replace(/\/+$/, '');
+        const grid = document.getElementById('cardsGrid');
+        grid.innerHTML = '';
+
+        SOUVENIRS.forEach(s => {
+            const url = `${base}/?souvenir=${encodeURIComponent(s.id)}`;
+
+            const card = document.createElement('div');
+            card.className = 'qr-card';
+            card.innerHTML = `
+                <div class="icon">${s.icon}</div>
+                <div class="title">${s.title}</div>
+                <div class="id">ID: ${s.id}</div>
+                <div class="qr-container" id="qr-${s.id}"></div>
+                <div class="url-text">${url}</div>
+            `;
+            grid.appendChild(card);
+
+            new QRCode(document.getElementById(`qr-${s.id}`), {
+                text: url,
+                width: 180,
+                height: 180,
+                colorDark: '#1F1F1F',
+                colorLight: '#ffffff'
+            });
+        });
+    }
+
+    document.getElementById('regenBtn').addEventListener('click', render);
+    render();
+</script>
+
+</body>
+</html>
