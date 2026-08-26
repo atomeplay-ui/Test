@@ -1369,6 +1369,13 @@
             margin: 0;
         }
 
+        .menu-user-name {
+            font-size: 0.75em;
+            color: var(--gray);
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
         .close-menu-btn {
             background: none;
             border: none;
@@ -1393,6 +1400,21 @@
             flex-direction: column;
             gap: 0;
             flex: 1;
+        }
+
+        .menu-footer {
+            border-top: 1px solid var(--primary-light);
+            padding-top: 4px;
+        }
+
+        .menu-item.logout-item {
+            color: var(--accent);
+        }
+
+        .menu-item.logout-item:hover {
+            color: var(--accent);
+            background: var(--accent-light);
+            border-left-color: var(--accent);
         }
 
         .menu-item {
@@ -1815,7 +1837,10 @@
         <!-- SIDE MENU -->
         <div class="side-menu" id="sideMenu">
             <div class="menu-header">
-                <h2>💍 Menu</h2>
+                <div>
+                    <h2>💍 Menu</h2>
+                    <div class="menu-user-name" id="menuUserName"></div>
+                </div>
                 <button class="close-menu-btn" id="closeMenuBtn" title="Fermer">
                     <i class="fas fa-times"></i>
                 </button>
@@ -1848,6 +1873,12 @@
                 <div class="menu-item" data-screen="leaderboard">
                     <div class="menu-icon"><i class="fas fa-medal"></i></div>
                     <div>Classement</div>
+                </div>
+            </div>
+            <div class="menu-footer">
+                <div class="menu-item logout-item" id="logoutMenuBtn">
+                    <div class="menu-icon"><i class="fas fa-sign-out-alt"></i></div>
+                    <div>Déconnexion</div>
                 </div>
             </div>
 
@@ -2021,6 +2052,7 @@
                     }
                 }
             }
+            updateMenuUserName();
         }
 
         async function confirmIdentity() {
@@ -2036,11 +2068,34 @@
             dom.identityModal.classList.remove('active');
             dom.audioAuthorInput.value = getUserIdentity();
             showToast(`💕 Bienvenue ${firstName} !`);
+            updateMenuUserName();
             try {
                 await loginGuest(firstName, lastName);
             } catch (e) {
                 // non bloquant
             }
+        }
+
+        // Affiche le nom de l'invité connecté en haut du menu latéral.
+        function updateMenuUserName() {
+            const nameEl = document.getElementById('menuUserName');
+            if (!nameEl) return;
+            const identity = getUserIdentity();
+            nameEl.textContent = identity ? `Connecté(e) : ${identity}` : '';
+        }
+
+        // Déconnexion : efface l'identité + la clé invité stockées localement,
+        // puis recharge la page pour redemander prénom/nom via le modal de bienvenue.
+        function logoutUser() {
+            const confirmed = confirm('Se déconnecter ? Vous devrez ressaisir votre prénom et nom à la prochaine ouverture.');
+            if (!confirmed) return;
+
+            localStorage.removeItem(IDENTITY_KEY);
+            localStorage.removeItem(GUEST_KEY_KEY);
+            localStorage.removeItem(SOUVENIRS_KEY);
+
+            showToast('👋 Vous êtes déconnecté(e)');
+            setTimeout(() => window.location.reload(), 600);
         }
 
         // ===== HAUTEUR RÉELLE DU VIEWPORT (fix iOS standalone) =====
@@ -3470,6 +3525,13 @@
                 item.addEventListener('click', () => {
                     setTimeout(closeMenu, 300);
                 });
+            });
+
+            // Déconnexion (efface l'identité stockée + rouvre le modal de bienvenue)
+            const logoutBtn = document.getElementById('logoutMenuBtn');
+            if (logoutBtn) logoutBtn.addEventListener('click', () => {
+                closeMenu();
+                logoutUser();
             });
         }
 
